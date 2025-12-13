@@ -88,7 +88,11 @@ func Run(argv []string, cfg Config) int {
 			Err:     cfg.Err,
 		})
 	case "add":
-		return runAdd(args, cfg)
+		return commands.RunAdd(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "list":
 		return commands.RunList(args, commands.CommandContext{
 			AppName: cfg.AppName,
@@ -252,42 +256,6 @@ func (s *stringList) Set(v string) error {
 }
 
 // --------------------- Commands (acknowledgement only) ---------------------
-func runAdd(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" add", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "add")) }
-
-	var (
-		path    string
-		desc    string
-		project string
-		due     string
-		tags    stringList
-	)
-	fs.StringVar(&path, "path", "", "custom workspace path")
-	fs.StringVar(&desc, "description", "", "description")
-	fs.StringVar(&desc, "d", "", "description (shorthand)")
-	fs.StringVar(&project, "project", "", "project name")
-	fs.StringVar(&project, "p", "", "project name (shorthand)")
-	fs.StringVar(&due, "due", "", "due date (YYYY-MM-DD)")
-	fs.Var(&tags, "tag", "repeatable tag")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "add"))
-		return 2
-	}
-
-	if len(fs.Args()) == 0 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "add"))
-		return 2
-	}
-	title := strings.Join(fs.Args(), " ")
-
-	fmt.Fprintf(cfg.Out, "Would add task: title=%q path=%q desc=%q project=%q due=%q tags=%v\n",
-		title, path, desc, project, due, []string(tags))
-	return 0
-}
 
 func runDone(argv []string, cfg Config) int {
 	fs := flag.NewFlagSet(cfg.AppName+" done", flag.ContinueOnError)
