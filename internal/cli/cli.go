@@ -100,7 +100,11 @@ func Run(argv []string, cfg Config) int {
 	case "describe":
 		return runDescribe(args, cfg)
 	case "show":
-		return runShow(args, cfg)
+		return commands.RunShow(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "update":
 		return runUpdate(args, cfg)
 
@@ -413,32 +417,6 @@ func runDescribe(argv []string, cfg Config) int {
 	}
 
 	fmt.Fprintf(cfg.Out, "Would describe (edit description later): path=%q id=%q\n", path, rest[0])
-	return 0
-}
-
-func runShow(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" show", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "show")) }
-
-	var path string
-	var all bool
-	fs.StringVar(&path, "path", "", "custom workspace path")
-	fs.BoolVar(&all, "all", false, "show full metadata")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "show"))
-		return 2
-	}
-
-	rest := fs.Args()
-	if len(rest) != 1 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "show"))
-		return 2
-	}
-
-	fmt.Fprintf(cfg.Out, "Would show task: path=%q id=%q all=%v\n", path, rest[0], all)
 	return 0
 }
 
