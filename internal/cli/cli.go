@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sjatkinson/threadkeeper/internal/commands"
+	"github.com/sjatkinson/threadkeeper/internal/config"
 )
 
 type Config struct {
@@ -64,7 +65,27 @@ func Run(argv []string, cfg Config) int {
 	}
 
 	rest := global.Args()
-	if flgHelp || len(rest) == 0 {
+	if flgHelp {
+		fmt.Fprintln(cfg.Err, usage(cfg.AppName))
+		return 0
+	}
+
+	// If no command provided, check if workspace exists
+	// If it exists, default to 'list'. Otherwise show usage.
+	if len(rest) == 0 {
+		paths, err := config.GetPaths("")
+		if err == nil {
+			// Check if tasks directory exists
+			if _, err := os.Stat(paths.TasksDir); err == nil {
+				// Workspace exists, run list command
+				return commands.RunList([]string{}, commands.CommandContext{
+					AppName: cfg.AppName,
+					Out:     cfg.Out,
+					Err:     cfg.Err,
+				})
+			}
+		}
+		// No workspace exists, show usage
 		fmt.Fprintln(cfg.Err, usage(cfg.AppName))
 		return 0
 	}
