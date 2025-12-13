@@ -127,7 +127,11 @@ func Run(argv []string, cfg Config) int {
 	case "reindex":
 		return runReindex(args, cfg)
 	case "describe":
-		return runDescribe(args, cfg)
+		return commands.RunDescribe(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "show":
 		return commands.RunShow(args, commands.CommandContext{
 			AppName: cfg.AppName,
@@ -347,30 +351,6 @@ func runReindex(argv []string, cfg Config) int {
 	}
 
 	fmt.Fprintf(cfg.Out, "Would reindex: path=%q\n", path)
-	return 0
-}
-
-func runDescribe(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" describe", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "describe")) }
-
-	var path string
-	fs.StringVar(&path, "path", "", "custom workspace path")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "describe"))
-		return 2
-	}
-
-	rest := fs.Args()
-	if len(rest) != 1 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "describe"))
-		return 2
-	}
-
-	fmt.Fprintf(cfg.Out, "Would describe (edit description later): path=%q id=%q\n", path, rest[0])
 	return 0
 }
 
