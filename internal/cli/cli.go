@@ -133,7 +133,11 @@ func Run(argv []string, cfg Config) int {
 			Err:     cfg.Err,
 		})
 	case "reindex":
-		return runReindex(args, cfg)
+		return commands.RunReindex(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "describe":
 		return commands.RunDescribe(args, commands.CommandContext{
 			AppName: cfg.AppName,
@@ -289,28 +293,6 @@ func (s *stringList) Set(v string) error {
 }
 
 // --------------------- Commands (acknowledgement only) ---------------------
-
-func runReindex(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" reindex", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "reindex")) }
-
-	var path string
-	fs.StringVar(&path, "path", "", "custom workspace path")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "reindex"))
-		return 2
-	}
-	if len(fs.Args()) != 0 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "reindex"))
-		return 2
-	}
-
-	fmt.Fprintf(cfg.Out, "Would reindex: path=%q\n", path)
-	return 0
-}
 
 func runUpdate(argv []string, cfg Config) int {
 	fs := flag.NewFlagSet(cfg.AppName+" update", flag.ContinueOnError)
