@@ -151,7 +151,11 @@ func Run(argv []string, cfg Config) int {
 			Err:     cfg.Err,
 		})
 	case "update":
-		return runUpdate(args, cfg)
+		return commands.RunUpdate(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 
 	default:
 		fmt.Fprintf(cfg.Err, "unknown command: %q\n\n", cmd)
@@ -290,44 +294,4 @@ func (s *stringList) String() string { return strings.Join(*s, ",") }
 func (s *stringList) Set(v string) error {
 	*s = append(*s, v)
 	return nil
-}
-
-// --------------------- Commands (acknowledgement only) ---------------------
-
-func runUpdate(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" update", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "update")) }
-
-	var (
-		path       string
-		title      string
-		due        string
-		project    string
-		addTags    stringList
-		removeTags stringList
-	)
-
-	fs.StringVar(&path, "path", "", "custom workspace path")
-	fs.StringVar(&title, "title", "", "set new title")
-	fs.StringVar(&due, "due", "", "set due date (YYYY-MM-DD)")
-	fs.StringVar(&project, "project", "", "set project name")
-	fs.Var(&addTags, "add-tag", "repeatable tag to add")
-	fs.Var(&removeTags, "remove-tag", "repeatable tag to remove")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "update"))
-		return 2
-	}
-
-	ids := fs.Args()
-	if len(ids) == 0 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "update"))
-		return 2
-	}
-
-	fmt.Fprintf(cfg.Out, "Would update tasks: path=%q ids=%v title=%q due=%q project=%q addTags=%v removeTags=%v\n",
-		path, ids, title, due, project, []string(addTags), []string(removeTags))
-	return 0
 }

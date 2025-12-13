@@ -1,0 +1,229 @@
+package commands
+
+import (
+	"fmt"
+	"os"
+	"sort"
+	"strings"
+	"time"
+
+	flag "github.com/spf13/pflag"
+
+	"github.com/sjatkinson/threadkeeper/internal/config"
+	"github.com/sjatkinson/threadkeeper/internal/store"
+	"github.com/sjatkinson/threadkeeper/internal/task"
+)
+
+type updateStringList []string
+
+func (s *updateStringList) String() string { return strings.Join(*s, ",") }
+func (s *updateStringList) Set(v string) error {
+	*s = append(*s, v)
+	return nil
+}
+func (s *updateStringList) Type() string { return "updateStringList" }
+
+func RunUpdate(args []string, ctx CommandContext) int {
+	fs := flag.NewFlagSet(ctx.AppName+" update", flag.ContinueOnError)
+	fs.SetOutput(ctx.Err)
+	fs.Usage = func() {
+		fmt.Fprintln(ctx.Err, updateUsage(ctx.AppName))
+	}
+
+	var (
+		path       string
+		title      string
+		due        string
+		project    string
+		addTags    updateStringList
+		removeTags updateStringList
+	)
+
+	fs.StringVar(&path, "path", "", "custom workspace path")
+	fs.StringVar(&title, "title", "", "set new title")
+	fs.StringVar(&due, "due", "", "set due date (YYYY-MM-DD)")
+	fs.StringVar(&project, "project", "", "set project name")
+	fs.Var(&addTags, "add-tag", "repeatable tag to add")
+	fs.Var(&removeTags, "remove-tag", "repeatable tag to remove")
+
+	if err := fs.Parse(args); err != nil {
+		fmt.Fprintln(ctx.Err)
+		fmt.Fprintln(ctx.Err, updateUsage(ctx.AppName))
+		return 2
+	}
+
+	ids := fs.Args()
+	if len(ids) == 0 {
+		fmt.Fprintf(ctx.Err, "Error: missing argument: task ID required\n")
+		return 2
+	}
+
+	// Check if at least one update field was provided
+	hasAddTags := len(addTags) > 0
+	hasRemoveTags := len(removeTags) > 0
+	if title == "" && due == "" && project == "" && !hasAddTags && !hasRemoveTags {
+		fmt.Fprintf(ctx.Err, "Error: nothing to update. Provide --title/--due/--project/--add-tag/--remove-tag.\n")
+		return 2
+	}
+
+	// Get paths and verify tasks directory exists
+	paths, err := config.GetPaths(path)
+	if err != nil {
+		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		return 1
+	}
+
+	if _, err := os.Stat(paths.TasksDir); err != nil {
+		fmt.Fprintf(ctx.Err, "Error: tasks directory does not exist at %s. Run '%s init' first.\n", paths.TasksDir, ctx.AppName)
+		return 1
+	}
+
+	// Load and resolve tasks
+	st := store.NewFileStore(paths.TasksDir)
+	var tasks []*task.Task
+	for _, idStr := range ids {
+		t, err := st.ResolveID(idStr)
+		if err != nil {
+			fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+			return 1
+		}
+		tasks = append(tasks, t)
+	}
+
+	// Normalize tags
+	normalizedAddTags := task.NormalizeTags([]string(addTags))
+	normalizedRemoveTags := task.NormalizeTags([]string(removeTags))
+
+	// Parse due date if provided
+	var dueAt *time.Time
+	if due != "" {
+		parsed, err := time.Parse("2006-01-02", due)
+		if err != nil {
+			fmt.Fprintf(ctx.Err, "Error: invalid due date format (expected YYYY-MM-DD): %v\n", err)
+			return 1
+		}
+		parsed = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.UTC)
+		dueAt = &parsed
+	}
+
+	// Update each task
+	now := time.Now().UTC()
+	for _, t := range tasks {
+		changed := false
+
+		// Update title
+		if title != "" && title != t.Title {
+			t.Title = title
+			changed = true
+		}
+
+		// Update due date
+		if dueAt != nil {
+			// Compare dates (ignore time component)
+			taskDueDate := time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC)
+			if t.DueAt != nil {
+				taskDueDate = *t.DueAt
+			}
+			newDueDate := time.Date(dueAt.Year(), dueAt.Month(), dueAt.Day(), 0, 0, 0, 0, time.UTC)
+			taskDueDate = time.Date(taskDueDate.Year(), taskDueDate.Month(), taskDueDate.Day(), 0, 0, 0, 0, time.UTC)
+
+			if newDueDate != taskDueDate {
+				t.DueAt = dueAt
+				changed = true
+			}
+		}
+
+		// Update project
+		if project != "" && project != t.Project {
+			t.Project = project
+			changed = true
+		}
+
+		// Update tags
+		if hasAddTags || hasRemoveTags {
+			existingTags := make(map[string]bool)
+			for _, tag := range t.Tags {
+				existingTags[tag] = true
+			}
+
+			// Make a copy to compare later
+			beforeTags := make(map[string]bool)
+			for tag := range existingTags {
+				beforeTags[tag] = true
+			}
+
+			// Add tags
+			for _, tag := range normalizedAddTags {
+				existingTags[tag] = true
+			}
+
+			// Remove tags
+			for _, tag := range normalizedRemoveTags {
+				delete(existingTags, tag)
+			}
+
+			// Check if tags actually changed (compare sets)
+			if len(existingTags) != len(beforeTags) {
+				changed = true
+			} else {
+				// Same size, but could be different tags
+				for tag := range existingTags {
+					if !beforeTags[tag] {
+						changed = true
+						break
+					}
+				}
+				if !changed {
+					for tag := range beforeTags {
+						if !existingTags[tag] {
+							changed = true
+							break
+						}
+					}
+				}
+			}
+
+			if changed {
+				// Convert map back to sorted slice
+				t.Tags = make([]string, 0, len(existingTags))
+				for tag := range existingTags {
+					t.Tags = append(t.Tags, tag)
+				}
+				sort.Strings(t.Tags)
+			}
+		}
+
+		// Save if changed
+		if changed {
+			t.UpdatedAt = now
+			if err := st.Save(t); err != nil {
+				fmt.Fprintf(ctx.Err, "Error: failed to save task %s: %v\n", t.ID, err)
+				return 1
+			}
+
+			// Print confirmation
+			sidStr := "?"
+			if t.ShortID != nil {
+				sidStr = fmt.Sprintf("%d", *t.ShortID)
+			}
+			fmt.Fprintf(ctx.Out, "Updated task %s (%s)\n", sidStr, t.ID)
+		}
+	}
+
+	return 0
+}
+
+func updateUsage(app string) string {
+	return fmt.Sprintf(`Usage:
+  %s update [--path <dir>] [flags] <id> [<id> ...]
+
+Flags:
+  --path <dir>        custom workspace path
+  --title <string>    set new title
+  --due <YYYY-MM-DD>  set due date
+  --project <name>    set project name
+  --add-tag <tag>     add a tag (repeatable)
+  --remove-tag <tag>  remove a tag (repeatable)
+
+`, app)
+}
