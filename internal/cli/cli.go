@@ -121,7 +121,11 @@ func Run(argv []string, cfg Config) int {
 			Err:     cfg.Err,
 		})
 	case "done":
-		return runDone(args, cfg)
+		return commands.RunDone(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "remove", "rm":
 		return runRemove(args, cfg)
 	case "reindex":
@@ -281,30 +285,6 @@ func (s *stringList) Set(v string) error {
 }
 
 // --------------------- Commands (acknowledgement only) ---------------------
-
-func runDone(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" done", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "done")) }
-
-	var path string
-	fs.StringVar(&path, "path", "", "custom workspace path")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "done"))
-		return 2
-	}
-
-	ids := fs.Args()
-	if len(ids) == 0 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "done"))
-		return 2
-	}
-
-	fmt.Fprintf(cfg.Out, "Would mark done: path=%q ids=%v\n", path, ids)
-	return 0
-}
 
 func runRemove(argv []string, cfg Config) int {
 	fs := flag.NewFlagSet(cfg.AppName+" remove", flag.ContinueOnError)
