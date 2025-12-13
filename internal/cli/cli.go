@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sjatkinson/threadkeeper/internal/config"
+	"github.com/sjatkinson/threadkeeper/internal/commands"
 )
 
 type Config struct {
@@ -82,7 +82,11 @@ func Run(argv []string, cfg Config) int {
 		return 0
 
 	case "init":
-		return runInit(args, cfg)
+		return commands.RunInit(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "add":
 		return runAdd(args, cfg)
 	case "list":
@@ -240,46 +244,6 @@ func (s *stringList) Set(v string) error {
 }
 
 // --------------------- Commands (acknowledgement only) ---------------------
-func runInit(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" init", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "init")) }
-
-	var path string
-	var force bool
-	fs.StringVar(&path, "path", "", "custom workspace path")
-	fs.BoolVar(&force, "force", false, "force initialization (wipes tasks dir files)")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "init"))
-		return 2
-	}
-	if len(fs.Args()) != 0 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "init"))
-		return 2
-	}
-
-	res, err := config.InitWorkspace(config.InitOptions{
-		CustomPath: path,
-		Force:      force,
-	})
-	if err != nil {
-		fmt.Fprintln(cfg.Err, "Error:", err)
-		return 1
-	}
-
-	fmt.Fprintf(cfg.Out, "Initialized workspace: %s\n", res.Workspace)
-	fmt.Fprintf(cfg.Out, "Tasks directory      : %s\n", res.TasksDir)
-	if res.Existed {
-		fmt.Fprintln(cfg.Out, "Note: tasks directory already existed.")
-	}
-	if force {
-		fmt.Fprintln(cfg.Out, "Note: --force was used; regular files in tasks directory were removed.")
-	}
-	return 0
-}
-
 func runAdd(argv []string, cfg Config) int {
 	fs := flag.NewFlagSet(cfg.AppName+" add", flag.ContinueOnError)
 	fs.SetOutput(cfg.Err)
