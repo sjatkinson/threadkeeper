@@ -90,7 +90,11 @@ func Run(argv []string, cfg Config) int {
 	case "add":
 		return runAdd(args, cfg)
 	case "list":
-		return runList(args, cfg)
+		return commands.RunList(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "done":
 		return runDone(args, cfg)
 	case "remove", "rm":
@@ -282,45 +286,6 @@ func runAdd(argv []string, cfg Config) int {
 
 	fmt.Fprintf(cfg.Out, "Would add task: title=%q path=%q desc=%q project=%q due=%q tags=%v\n",
 		title, path, desc, project, due, []string(tags))
-	return 0
-}
-
-func runList(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" list", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "list")) }
-
-	var (
-		path    string
-		all     bool
-		project string
-		status  string
-		limit   int
-		tag     string
-	)
-
-	fs.StringVar(&path, "path", "", "custom workspace path")
-	fs.BoolVar(&all, "all", false, "show all tasks")
-	fs.BoolVar(&all, "a", false, "show all tasks (shorthand)")
-	fs.StringVar(&project, "project", "", "filter by project")
-	fs.StringVar(&project, "p", "", "filter by project (shorthand)")
-	fs.StringVar(&status, "status", "", "open|done|archived")
-	fs.IntVar(&limit, "limit", 0, "limit number of tasks")
-	fs.IntVar(&limit, "n", 0, "limit number of tasks (shorthand)")
-	fs.StringVar(&tag, "tag", "", "filter by tag")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "list"))
-		return 2
-	}
-	if len(fs.Args()) != 0 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "list"))
-		return 2
-	}
-
-	fmt.Fprintf(cfg.Out, "Would list tasks: path=%q all=%v project=%q status=%q limit=%d tag=%q\n",
-		path, all, project, status, limit, tag)
 	return 0
 }
 
