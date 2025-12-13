@@ -127,7 +127,11 @@ func Run(argv []string, cfg Config) int {
 			Err:     cfg.Err,
 		})
 	case "remove", "rm":
-		return runRemove(args, cfg)
+		return commands.RunRemove(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "reindex":
 		return runReindex(args, cfg)
 	case "describe":
@@ -285,32 +289,6 @@ func (s *stringList) Set(v string) error {
 }
 
 // --------------------- Commands (acknowledgement only) ---------------------
-
-func runRemove(argv []string, cfg Config) int {
-	fs := flag.NewFlagSet(cfg.AppName+" remove", flag.ContinueOnError)
-	fs.SetOutput(cfg.Err)
-	fs.Usage = func() { fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "remove")) }
-
-	var path string
-	var force bool
-	fs.StringVar(&path, "path", "", "custom workspace path")
-	fs.BoolVar(&force, "force", false, "actually delete")
-
-	if err := fs.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "remove"))
-		return 2
-	}
-
-	ids := fs.Args()
-	if len(ids) == 0 {
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, "remove"))
-		return 2
-	}
-
-	fmt.Fprintf(cfg.Out, "Would remove tasks: path=%q force=%v ids=%v\n", path, force, ids)
-	return 0
-}
 
 func runReindex(argv []string, cfg Config) int {
 	fs := flag.NewFlagSet(cfg.AppName+" reindex", flag.ContinueOnError)
