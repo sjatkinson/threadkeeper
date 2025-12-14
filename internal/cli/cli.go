@@ -93,6 +93,41 @@ func Run(argv []string, cfg Config) int {
 	cmd := rest[0]
 	args := rest[1:]
 
+	// Define built-in commands (these take precedence over aliases)
+	builtInCommands := map[string]bool{
+		"help":     true,
+		"init":     true,
+		"add":      true,
+		"list":     true,
+		"done":     true,
+		"remove":   true,
+		"reindex":  true,
+		"describe": true,
+		"show":     true,
+		"update":   true,
+	}
+
+	// Load aliases from config
+	rawAliases, err := config.LoadAliases()
+	if err != nil {
+		// Log warning but continue (don't fail on malformed config)
+		if cfg.Verbose || cfg.Debug {
+			fmt.Fprintf(cfg.Err, "Warning: failed to load aliases: %v\n", err)
+		}
+		rawAliases = make(config.Aliases)
+	}
+
+	// Validate and filter aliases
+	aliases := validateAliases(rawAliases, builtInCommands, cfg.Verbose || cfg.Debug, cfg.Err)
+
+	// Resolve alias: built-in commands take precedence
+	if !builtInCommands[cmd] {
+		if target, ok := aliases[cmd]; ok {
+			// Alias is already validated, so target is guaranteed to be a built-in
+			cmd = target
+		}
+	}
+
 	switch cmd {
 	case "help":
 		if len(args) == 0 {
@@ -126,7 +161,7 @@ func Run(argv []string, cfg Config) int {
 			Out:     cfg.Out,
 			Err:     cfg.Err,
 		})
-	case "remove", "rm":
+	case "remove":
 		return commands.RunRemove(args, commands.CommandContext{
 			AppName: cfg.AppName,
 			Out:     cfg.Out,
@@ -182,7 +217,6 @@ Commands:
   list      List tasks
   done      Mark one or more tasks done
   remove    Remove one or more tasks (hard delete; requires --force)
-  rm        Alias for remove
   reindex   Reassign short IDs for active tasks
   describe  Edit a task description in $EDITOR (later)
   show      Show details for a single task
@@ -239,15 +273,14 @@ Flags:
 
 `, app)
 
-	case "remove", "rm":
+	case "remove":
 		return fmt.Sprintf(`Usage:
   %s remove [--path <dir>] --force <id> [<id> ...]
-  %s rm     [--path <dir>] --force <id> [<id> ...]
 
 Flags:
   --force   actually delete (required)
 
-`, app, app)
+`, app)
 
 	case "reindex":
 		return fmt.Sprintf(`Usage:
@@ -286,6 +319,46 @@ Flags:
 	default:
 		return fmt.Sprintf("Unknown command %q\n\n%s", cmd, usage(app))
 	}
+}
+
+// validateAliases filters and validates aliases:
+// - Removes aliases that conflict with built-in commands (built-in wins)
+// - Removes aliases that point to non-existent commands
+// - Removes aliases that point to other aliases (no recursion)
+// Returns a validated map of alias -> built-in command.
+func validateAliases(raw config.Aliases, builtInCommands map[string]bool, verbose bool, errOut io.Writer) config.Aliases {
+	valid := make(config.Aliases)
+
+	for alias, target := range raw {
+		// Skip aliases that conflict with built-in commands
+		if builtInCommands[alias] {
+			if verbose {
+				fmt.Fprintf(errOut, "Warning: alias %q conflicts with built-in command, ignoring\n", alias)
+			}
+			continue
+		}
+
+		// Check if target is a built-in command
+		if !builtInCommands[target] {
+			// Check if target is another alias (recursion)
+			if _, isAlias := raw[target]; isAlias {
+				if verbose {
+					fmt.Fprintf(errOut, "Warning: alias %q points to another alias %q (recursion not allowed), ignoring\n", alias, target)
+				}
+				continue
+			}
+			// Target is not a built-in and not an alias - invalid
+			if verbose {
+				fmt.Fprintf(errOut, "Warning: alias %q points to non-existent command %q, ignoring\n", alias, target)
+			}
+			continue
+		}
+
+		// Valid alias: points directly to a built-in command
+		valid[alias] = target
+	}
+
+	return valid
 }
 
 type stringList []string

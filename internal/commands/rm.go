@@ -95,11 +95,10 @@ func RunRemove(args []string, ctx CommandContext) int {
 func removeUsage(app string) string {
 	return fmt.Sprintf(`Usage:
   %s remove [--path <dir>] --force <id> [<id> ...]
-  %s rm     [--path <dir>] --force <id> [<id> ...]
 
 Flags:
   --path <dir>   custom workspace path
   --force        actually delete (required)
 
-`, app, app)
+`, app)
 }

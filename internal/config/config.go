@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pelletier/go-toml/v2"
 )
 
 const (
@@ -187,4 +189,50 @@ func ExpandUser(p string) (string, error) {
 		return filepath.Join(home, p[2:]), nil
 	}
 	return p, nil
+}
+
+// Aliases is a map of alias name to target command.
+type Aliases map[string]string
+
+// LoadAliases reads config.toml and returns aliases from the [alias] section.
+// Returns an empty map (not an error) if:
+//   - Config file doesn't exist
+//   - [alias] section doesn't exist
+//   - [alias] section is empty
+//
+// Returns an error only if the config file exists but is malformed TOML.
+func LoadAliases() (Aliases, error) {
+	cfgPath, err := ConfigPath()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return make(Aliases), nil
+		}
+		return nil, err
+	}
+
+	var cfg struct {
+		Alias map[string]string `toml:"alias"`
+	}
+
+	if err := toml.Unmarshal(data, &cfg); err != nil {
+		// Malformed TOML - return error
+		return nil, err
+	}
+
+	if cfg.Alias == nil {
+		return make(Aliases), nil
+	}
+
+	// Return a copy to avoid external modification
+	aliases := make(Aliases, len(cfg.Alias))
+	for k, v := range cfg.Alias {
+		aliases[k] = v
+	}
+
+	return aliases, nil
 }
