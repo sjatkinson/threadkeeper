@@ -75,8 +75,8 @@ func Run(argv []string, cfg Config) int {
 	if len(rest) == 0 {
 		paths, err := config.GetPaths("")
 		if err == nil {
-			// Check if tasks directory exists
-			if _, err := os.Stat(paths.TasksDir); err == nil {
+			// Check if threads directory exists
+			if _, err := os.Stat(paths.ThreadsDir); err == nil {
 				// Workspace exists, run list command
 				return commands.RunList([]string{}, commands.CommandContext{
 					AppName: cfg.AppName,
@@ -107,6 +107,7 @@ func Run(argv []string, cfg Config) int {
 		"describe": true,
 		"show":     true,
 		"update":   true,
+		"path":     true,
 	}
 
 	// Load aliases from config
@@ -205,6 +206,12 @@ func Run(argv []string, cfg Config) int {
 			Out:     cfg.Out,
 			Err:     cfg.Err,
 		})
+	case "path":
+		return commands.RunPath(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 
 	default:
 		fmt.Fprintf(cfg.Err, "unknown command: %q\n\n", cmd)
@@ -238,6 +245,7 @@ Commands:
   remove    Remove one or more tasks (hard delete; requires --force)
 
   reindex   Reassign short IDs for active tasks
+  path      Print filesystem path for a thread directory
   help      Help for a command
 
 Run:
@@ -347,6 +355,17 @@ Flags:
   --project <name>      set project name
   --add-tag <tag>       repeatable
   --remove-tag <tag>    repeatable
+
+`, app)
+
+	case "path":
+		return fmt.Sprintf(`Usage:
+  %s path [--path <dir>] <thread-id>
+
+Prints the canonical filesystem path for the thread directory.
+
+Flags:
+  --path <dir>   custom workspace path
 
 `, app)
 

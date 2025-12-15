@@ -39,13 +39,13 @@ func RunReopen(args []string, ctx CommandContext) int {
 		return 1
 	}
 
-	if _, err := os.Stat(paths.TasksDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: tasks directory does not exist at %s. Run '%s init' first.\n", paths.TasksDir, ctx.AppName)
+	if _, err := os.Stat(paths.ThreadsDir); err != nil {
+		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
 	// Validate all IDs first - abort if any are missing
-	st := store.NewFileStore(paths.TasksDir)
+	st := store.NewFileStore(paths.ThreadsDir)
 	var tasks []*task.Task
 	var missingIDs []string
 

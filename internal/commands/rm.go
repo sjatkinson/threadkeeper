@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/sjatkinson/threadkeeper/internal/config"
 	"github.com/sjatkinson/threadkeeper/internal/store"
@@ -41,20 +40,20 @@ func RunRemove(args []string, ctx CommandContext) int {
 		return 1
 	}
 
-	// Get paths and verify tasks directory exists
+	// Get paths and verify threads directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
 		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
-	if _, err := os.Stat(paths.TasksDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: tasks directory does not exist at %s. Run '%s init' first.\n", paths.TasksDir, ctx.AppName)
+	if _, err := os.Stat(paths.ThreadsDir); err != nil {
+		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
 	// Load and resolve tasks
-	st := store.NewFileStore(paths.TasksDir)
+	st := store.NewFileStore(paths.ThreadsDir)
 	var tasks []*task.Task
 	for _, idStr := range ids {
 		t, err := st.ResolveID(idStr)
@@ -65,20 +64,20 @@ func RunRemove(args []string, ctx CommandContext) int {
 		tasks = append(tasks, t)
 	}
 
-	// Delete each task file
+	// Delete each thread directory
 	for _, t := range tasks {
-		taskPath := filepath.Join(paths.TasksDir, t.ID+".json")
-		if _, err := os.Stat(taskPath); err != nil {
+		threadDir := store.ThreadPath(paths.ThreadsDir, t.ID)
+		if _, err := os.Stat(threadDir); err != nil {
 			if os.IsNotExist(err) {
-				fmt.Fprintf(ctx.Err, "Error: file for task %s not found; skipping\n", t.ID)
+				fmt.Fprintf(ctx.Err, "Error: thread directory for task %s not found; skipping\n", t.ID)
 				continue
 			}
-			fmt.Fprintf(ctx.Err, "Error: failed to check task file %s: %v\n", t.ID, err)
+			fmt.Fprintf(ctx.Err, "Error: failed to check thread directory %s: %v\n", t.ID, err)
 			continue
 		}
 
-		if err := os.Remove(taskPath); err != nil {
-			fmt.Fprintf(ctx.Err, "Error: failed to remove task %s: %v\n", t.ID, err)
+		if err := os.RemoveAll(threadDir); err != nil {
+			fmt.Fprintf(ctx.Err, "Error: failed to remove thread %s: %v\n", t.ID, err)
 			continue
 		}
 

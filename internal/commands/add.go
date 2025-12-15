@@ -64,8 +64,8 @@ func RunAdd(args []string, ctx CommandContext) int {
 		return 1
 	}
 
-	if _, err := os.Stat(paths.TasksDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: tasks directory does not exist at %s. Run '%s init' first.\n", paths.TasksDir, ctx.AppName)
+	if _, err := os.Stat(paths.ThreadsDir); err != nil {
+		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
@@ -92,7 +92,7 @@ func RunAdd(args []string, ctx CommandContext) int {
 	normalizedTags := task.NormalizeTags([]string(tags))
 
 	// Get next short_id
-	st := store.NewFileStore(paths.TasksDir)
+	st := store.NewFileStore(paths.ThreadsDir)
 	shortID, err := st.GenerateNextShortID()
 	if err != nil {
 		fmt.Fprintf(ctx.Err, "Error: failed to generate short_id: %v\n", err)

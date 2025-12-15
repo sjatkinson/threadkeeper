@@ -21,8 +21,8 @@ const (
 )
 
 type Paths struct {
-	Workspace string
-	TasksDir  string
+	Workspace  string
+	ThreadsDir string
 	// Later: AttachmentsDir, NotesDir, IndexDir, etc.
 }
 
@@ -166,8 +166,8 @@ func GetPaths(custom string) (Paths, error) {
 
 	ws = filepath.Clean(ws)
 	return Paths{
-		Workspace: ws,
-		TasksDir:  filepath.Join(ws, "tasks"),
+		Workspace:  ws,
+		ThreadsDir: filepath.Join(ws, "threads"),
 	}, nil
 }
 

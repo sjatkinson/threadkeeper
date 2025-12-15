@@ -38,13 +38,13 @@ func RunReindex(args []string, ctx CommandContext) int {
 		return 1
 	}
 
-	if _, err := os.Stat(paths.TasksDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: tasks directory does not exist at %s. Run '%s init' first.\n", paths.TasksDir, ctx.AppName)
+	if _, err := os.Stat(paths.ThreadsDir); err != nil {
+		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
 	// Load all tasks
-	st := store.NewFileStore(paths.TasksDir)
+	st := store.NewFileStore(paths.ThreadsDir)
 	tasks, err := st.LoadAll()
 	if err != nil {
 		fmt.Fprintf(ctx.Err, "Error: failed to load tasks: %v\n", err)

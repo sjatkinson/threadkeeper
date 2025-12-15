@@ -28,7 +28,7 @@ func RunInit(args []string, ctx CommandContext) int {
 	var path string
 	var force bool
 	fs.StringVar(&path, "path", "", "custom workspace path")
-	fs.BoolVar(&force, "force", false, "force initialization (wipes tasks dir files)")
+	fs.BoolVar(&force, "force", false, "force initialization (wipes threads directory)")
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintln(ctx.Err)
@@ -52,37 +52,42 @@ func RunInit(args []string, ctx CommandContext) int {
 		return 1
 	}
 
-	// Tasks dir handling
-	existed := dirExists(paths.TasksDir)
+	// Threads dir handling
+	existed := dirExists(paths.ThreadsDir)
 
 	if existed {
-		// Tasks directory already exists
+		// Threads directory already exists
 		if force {
-			// --force was specified: delete regular files in tasks dir
-			if err := deleteRegularFiles(paths.TasksDir); err != nil {
-				fmt.Fprintf(ctx.Err, "Error: failed to delete existing files: %v\n", err)
+			// --force was specified: delete entire threads directory
+			if err := os.RemoveAll(paths.ThreadsDir); err != nil {
+				fmt.Fprintf(ctx.Err, "Error: failed to delete threads directory: %v\n", err)
+				return 1
+			}
+			// Recreate the directory
+			if err := os.MkdirAll(paths.ThreadsDir, 0o755); err != nil {
+				fmt.Fprintf(ctx.Err, "Error: failed to create threads directory: %v\n", err)
 				return 1
 			}
 			fmt.Fprintf(ctx.Out, "Initialized workspace: %s\n", paths.Workspace)
-			fmt.Fprintf(ctx.Out, "Tasks directory      : %s\n", paths.TasksDir)
-			fmt.Fprintln(ctx.Out, "Note: --force was used; regular files in tasks directory were removed.")
+			fmt.Fprintf(ctx.Out, "Threads directory    : %s\n", paths.ThreadsDir)
+			fmt.Fprintln(ctx.Out, "Note: --force was used; threads directory was removed and recreated.")
 			return 0
 		}
 		// No --force: show warning and don't touch anything
-		fmt.Fprintf(ctx.Err, "Warning: tasks directory %s already exists (use --force to reinitialize)\n", paths.TasksDir)
+		fmt.Fprintf(ctx.Err, "Warning: threads directory %s already exists (use --force to reinitialize)\n", paths.ThreadsDir)
 		fmt.Fprintf(ctx.Out, "Initialized workspace: %s\n", paths.Workspace)
-		fmt.Fprintf(ctx.Out, "Tasks directory      : %s\n", paths.TasksDir)
+		fmt.Fprintf(ctx.Out, "Threads directory    : %s\n", paths.ThreadsDir)
 		return 0
 	}
 
-	// Tasks dir doesn't exist - create it
-	if err := os.MkdirAll(paths.TasksDir, 0o755); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to create tasks directory: %v\n", err)
+	// Threads dir doesn't exist - create it
+	if err := os.MkdirAll(paths.ThreadsDir, 0o755); err != nil {
+		fmt.Fprintf(ctx.Err, "Error: failed to create threads directory: %v\n", err)
 		return 1
 	}
 
 	fmt.Fprintf(ctx.Out, "Initialized workspace: %s\n", paths.Workspace)
-	fmt.Fprintf(ctx.Out, "Tasks directory      : %s\n", paths.TasksDir)
+	fmt.Fprintf(ctx.Out, "Threads directory    : %s\n", paths.ThreadsDir)
 	return 0
 }
 

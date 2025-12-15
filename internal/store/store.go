@@ -13,43 +13,59 @@ import (
 
 // FileStore provides file-based storage for tasks.
 type FileStore struct {
-	tasksDir string
+	threadsDir string
 }
 
-// NewFileStore creates a new FileStore for the given tasks directory.
-func NewFileStore(tasksDir string) *FileStore {
+// NewFileStore creates a new FileStore for the given threads directory.
+func NewFileStore(threadsDir string) *FileStore {
 	return &FileStore{
-		tasksDir: tasksDir,
+		threadsDir: threadsDir,
 	}
 }
 
-// LoadAll loads all tasks from the tasks directory.
+// LoadAll loads all tasks from the threads directory by scanning sharded buckets.
 func (s *FileStore) LoadAll() ([]*task.Task, error) {
-	entries, err := os.ReadDir(s.tasksDir)
+	// Check if threads directory exists
+	entries, err := os.ReadDir(s.threadsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return []*task.Task{}, nil
 		}
-		return nil, fmt.Errorf("failed to read tasks directory: %w", err)
+		return nil, fmt.Errorf("failed to read threads directory: %w", err)
 	}
 
 	var tasks []*task.Task
-	for _, entry := range entries {
-		if entry.IsDir() || !entry.Type().IsRegular() {
-			continue
-		}
-		if filepath.Ext(entry.Name()) != ".json" {
+
+	// Scan each bucket directory
+	for _, bucketEntry := range entries {
+		if !bucketEntry.IsDir() {
 			continue
 		}
 
-		path := filepath.Join(s.tasksDir, entry.Name())
-		t, err := s.loadTask(path)
+		bucketPath := filepath.Join(s.threadsDir, bucketEntry.Name())
+
+		// Read thread directories within this bucket
+		threadEntries, err := os.ReadDir(bucketPath)
 		if err != nil {
-			// Log but continue loading other tasks
-			// In a production system, you might want to log this to stderr
+			// Skip buckets that can't be read
 			continue
 		}
-		tasks = append(tasks, t)
+
+		for _, threadEntry := range threadEntries {
+			if !threadEntry.IsDir() {
+				continue
+			}
+
+			// Load thread.json from this thread directory
+			threadJSONPath := filepath.Join(bucketPath, threadEntry.Name(), "thread.json")
+			t, err := s.loadTask(threadJSONPath)
+			if err != nil {
+				// Log but continue loading other tasks
+				// In a production system, you might want to log this to stderr
+				continue
+			}
+			tasks = append(tasks, t)
+		}
 	}
 
 	// Sort by created_at then ID for consistency
@@ -84,8 +100,8 @@ func (s *FileStore) loadTask(path string) (*task.Task, error) {
 // GetByID loads a task by its durable ID.
 // If the task is open and missing a short_id, one will be assigned automatically.
 func (s *FileStore) GetByID(id string) (*task.Task, error) {
-	path := filepath.Join(s.tasksDir, id+".json")
-	t, err := s.loadTask(path)
+	threadPath := ThreadFilePath(s.threadsDir, id)
+	t, err := s.loadTask(threadPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("task %s not found", id)
@@ -149,9 +165,18 @@ func (s *FileStore) GenerateNextShortID() (int, error) {
 	return maxSID + 1, nil
 }
 
-// Save saves a task to its JSON file.
+// Save saves a task to its thread.json file.
 func (s *FileStore) Save(t *task.Task) error {
-	path := filepath.Join(s.tasksDir, t.ID+".json")
+	// Get thread directory path
+	threadDir := ThreadPath(s.threadsDir, t.ID)
+
+	// Ensure thread directory exists
+	if err := os.MkdirAll(threadDir, 0755); err != nil {
+		return fmt.Errorf("failed to create thread directory: %w", err)
+	}
+
+	// Get path to thread.json
+	path := ThreadFilePath(s.threadsDir, t.ID)
 
 	// Prepare data for JSON encoding
 	data, err := json.MarshalIndent(t, "", "  ")
