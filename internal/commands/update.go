@@ -52,7 +52,26 @@ func RunUpdate(args []string, ctx CommandContext) int {
 		return 2
 	}
 
-	ids := fs.Args()
+	// Parse positional arguments: separate IDs from +tag and ^tag shortcuts
+	remaining := fs.Args()
+	var ids []string
+	for _, arg := range remaining {
+		if strings.HasPrefix(arg, "+") {
+			// Add tag shortcut: +tag
+			if len(arg) > 1 {
+				addTags = append(addTags, arg[1:])
+			}
+		} else if strings.HasPrefix(arg, "^") {
+			// Remove tag shortcut: ^tag
+			if len(arg) > 1 {
+				removeTags = append(removeTags, arg[1:])
+			}
+		} else {
+			// Regular ID
+			ids = append(ids, arg)
+		}
+	}
+
 	if len(ids) == 0 {
 		fmt.Fprintf(ctx.Err, "Error: missing argument: task ID required\n")
 		return 2
@@ -62,7 +81,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	hasAddTags := len(addTags) > 0
 	hasRemoveTags := len(removeTags) > 0
 	if title == "" && due == "" && project == "" && !hasAddTags && !hasRemoveTags {
-		fmt.Fprintf(ctx.Err, "Error: nothing to update. Provide --title/--due/--project/--add-tag/--remove-tag.\n")
+		fmt.Fprintf(ctx.Err, "Error: nothing to update. Provide --title/--due/--project/--add-tag/--remove-tag or use +tag/^tag shortcuts.\n")
 		return 2
 	}
 
@@ -215,7 +234,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 
 func updateUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s update [--path <dir>] [flags] <id> [<id> ...]
+  %s update [--path <dir>] [flags] <id> [<id> ...] [+tag] [^tag] ...
 
 Flags:
   --path <dir>        custom workspace path
@@ -225,5 +244,13 @@ Flags:
   --add-tag <tag>     add a tag (repeatable)
   --remove-tag <tag>  remove a tag (repeatable)
 
-`, app)
+Tag shortcuts:
+  +tag                add a tag (e.g., +foo)
+  ^tag                remove a tag (e.g., ^bar)
+
+Examples:
+  %s update 3 +foo ^bar
+  %s update 3 --title "New title" +important
+
+`, app, app, app)
 }
