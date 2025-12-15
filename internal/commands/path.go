@@ -50,8 +50,16 @@ func RunPath(args []string, ctx CommandContext) int {
 		return 1
 	}
 
-	// Resolve thread path
-	threadPath := store.ThreadPath(paths.ThreadsDir, threadID)
+	// Resolve ID (handles both durable IDs and short IDs)
+	st := store.NewFileStore(paths.ThreadsDir)
+	t, err := st.ResolveID(threadID)
+	if err != nil {
+		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		return 1
+	}
+
+	// Resolve thread path using the durable ID
+	threadPath := store.ThreadPath(paths.ThreadsDir, t.ID)
 
 	// Print only the path, followed by a newline (no extra text)
 	fmt.Fprintf(ctx.Out, "%s\n", threadPath)
@@ -64,6 +72,7 @@ func pathUsage(app string) string {
   %s path [--path <dir>] <thread-id>
 
 Prints the canonical filesystem path for the thread directory.
+Accepts either a durable thread ID or a short ID.
 
 Flags:
   --path <dir>   custom workspace path

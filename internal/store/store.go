@@ -225,6 +225,24 @@ func (s *FileStore) EnsureShortID(t *task.Task) error {
 // Returns the task if found, or an error if not found or ambiguous.
 // If the task is open and missing a short_id, one will be assigned automatically.
 func (s *FileStore) ResolveID(idStr string) (*task.Task, error) {
+	// If the ID is too short to be a durable ID (need at least 2 chars for bucket),
+	// try as short_id first
+	if len(idStr) < 2 {
+		shortID, err := strconv.Atoi(idStr)
+		if err != nil {
+			return nil, fmt.Errorf("'%s' is not a valid task ID or short_id", idStr)
+		}
+		t, err := s.GetByShortID(shortID)
+		if err != nil {
+			return nil, err
+		}
+		// Ensure it has short_id (should already have one, but be safe)
+		if err := s.EnsureShortID(t); err != nil {
+			// Log but don't fail
+		}
+		return t, nil
+	}
+
 	// First, try as durable ID
 	t, err := s.GetByID(idStr)
 	if err == nil {

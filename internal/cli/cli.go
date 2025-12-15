@@ -363,6 +363,7 @@ Flags:
   %s path [--path <dir>] <thread-id>
 
 Prints the canonical filesystem path for the thread directory.
+Accepts either a durable thread ID or a short ID.
 
 Flags:
   --path <dir>   custom workspace path
