@@ -18,6 +18,16 @@ const (
 
 	// Key we read from config.toml
 	DefaultWorkspaceKey = "default_workspace"
+	DateLocaleKey       = "date_locale"
+)
+
+// DateLocale represents the locale for date parsing.
+type DateLocale string
+
+const (
+	DateLocaleISO DateLocale = "iso"
+	DateLocaleUS  DateLocale = "us"
+	DateLocaleEU  DateLocale = "eu"
 )
 
 type Paths struct {
@@ -235,4 +245,39 @@ func LoadAliases() (Aliases, error) {
 	}
 
 	return aliases, nil
+}
+
+// LoadDateLocale reads config.toml and returns the date_locale setting.
+// Returns "iso" (default) if not set or invalid.
+func LoadDateLocale() (DateLocale, error) {
+	cfgPath, err := ConfigPath()
+	if err != nil {
+		return DateLocaleISO, nil // Default on error
+	}
+
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return DateLocaleISO, nil // Default if config doesn't exist
+		}
+		return DateLocaleISO, nil // Default on read error
+	}
+
+	var cfg struct {
+		DateLocale string `toml:"date_locale"`
+	}
+
+	if err := toml.Unmarshal(data, &cfg); err != nil {
+		// Malformed TOML - return default
+		return DateLocaleISO, nil
+	}
+
+	locale := DateLocale(strings.ToLower(strings.TrimSpace(cfg.DateLocale)))
+	switch locale {
+	case DateLocaleISO, DateLocaleUS, DateLocaleEU:
+		return locale, nil
+	default:
+		// Invalid locale - return default
+		return DateLocaleISO, nil
+	}
 }

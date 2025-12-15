@@ -273,7 +273,7 @@ Flags:
   --path <dir>           custom workspace path
   -d, --description <t>  description
   -p, --project <name>   project name
-  --due <YYYY-MM-DD>     due date (string for now)
+  --due <date>           due date (format depends on date_locale config)
   --tag <tag>            repeatable
 
 `, app)
@@ -351,7 +351,7 @@ Flags:
 
 Flags:
   --title <t>           set new title
-  --due <YYYY-MM-DD>    set due date
+  --due <date>          set due date (format depends on date_locale config)
   --project <name>      set project name
   --add-tag <tag>       repeatable
   --remove-tag <tag>    repeatable

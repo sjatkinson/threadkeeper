@@ -10,6 +10,7 @@ import (
 	flag "github.com/spf13/pflag"
 
 	"github.com/sjatkinson/threadkeeper/internal/config"
+	"github.com/sjatkinson/threadkeeper/internal/date"
 	"github.com/sjatkinson/threadkeeper/internal/store"
 	"github.com/sjatkinson/threadkeeper/internal/task"
 )
@@ -127,9 +128,23 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	// Parse due date if provided
 	var dueAt *time.Time
 	if due != "" {
-		parsed, err := time.Parse("2006-01-02", due)
+		// Load date locale from config
+		locale, err := config.LoadDateLocale()
 		if err != nil {
-			fmt.Fprintf(ctx.Err, "Error: invalid due date format (expected YYYY-MM-DD): %v\n", err)
+			locale = config.DateLocaleISO // Default on error
+		}
+
+		// Parse date using locale-aware parser
+		canonical, err := date.ParseDate(due, locale, date.RealClock{}, nil)
+		if err != nil {
+			fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+			return 1
+		}
+
+		// Convert canonical string to time.Time
+		parsed, err := time.Parse("2006-01-02", canonical)
+		if err != nil {
+			fmt.Fprintf(ctx.Err, "Error: failed to parse canonical date: %v\n", err)
 			return 1
 		}
 		parsed = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.UTC)
@@ -250,7 +265,7 @@ func updateUsage(app string) string {
 Flags:
   --path <dir>        custom workspace path
   --title <string>    set new title
-  --due <YYYY-MM-DD>  set due date
+  --due <date>        set due date (format depends on date_locale config)
   --project <name>    set project name
   --add-tag <tag>     add a tag (repeatable)
   --remove-tag <tag>  remove a tag (repeatable)
