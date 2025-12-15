@@ -222,13 +222,14 @@ Commands:
   init      Initialize the workspace
   add       Add a new task
   list      List tasks
-  done      Mark one or more tasks done
-  remove    Remove one or more tasks (hard delete; requires --force)
-  archive   Archive one or more tasks
-  reindex   Reassign short IDs for active tasks
-  describe  Edit a task description in $EDITOR (later)
   show      Show details for a single task
+  describe  Edit a task description in $EDITOR (later)
   update    Update fields on one or more tasks
+  done      Mark one or more tasks done
+  archive   Archive one or more tasks
+  remove    Remove one or more tasks (hard delete; requires --force)
+
+  reindex   Reassign short IDs for active tasks
   help      Help for a command
 
 Run:
