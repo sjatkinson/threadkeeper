@@ -101,6 +101,7 @@ func Run(argv []string, cfg Config) int {
 		"list":     true,
 		"done":     true,
 		"remove":   true,
+		"archive":  true,
 		"reindex":  true,
 		"describe": true,
 		"show":     true,
@@ -167,6 +168,12 @@ func Run(argv []string, cfg Config) int {
 			Out:     cfg.Out,
 			Err:     cfg.Err,
 		})
+	case "archive":
+		return commands.RunArchive(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "reindex":
 		return commands.RunReindex(args, commands.CommandContext{
 			AppName: cfg.AppName,
@@ -217,6 +224,7 @@ Commands:
   list      List tasks
   done      Mark one or more tasks done
   remove    Remove one or more tasks (hard delete; requires --force)
+  archive   Archive one or more tasks
   reindex   Reassign short IDs for active tasks
   describe  Edit a task description in $EDITOR (later)
   show      Show details for a single task
@@ -279,6 +287,15 @@ Flags:
 
 Flags:
   --force   actually delete (required)
+
+`, app)
+
+	case "archive":
+		return fmt.Sprintf(`Usage:
+  %s archive [--path <dir>] <id> [<id> ...]
+
+Flags:
+  --path <dir>   custom workspace path
 
 `, app)
 
