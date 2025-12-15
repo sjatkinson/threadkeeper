@@ -46,13 +46,29 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	fs.Var(&addTags, "add-tag", "repeatable tag to add")
 	fs.Var(&removeTags, "remove-tag", "repeatable tag to remove")
 
-	if err := fs.Parse(args); err != nil {
+	// Pre-process args: convert -tag to --remove-tag tag
+	// Since we have no short flags, any -X (where X is not --) can be treated as tag removal
+	processedArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		// Check if this looks like a short flag that should be converted to tag removal
+		// Pattern: -X where X is not -- (long flag)
+		if strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") && len(arg) > 1 {
+			// Convert -tag to --remove-tag tag
+			tagName := arg[1:] // Remove the leading -
+			processedArgs = append(processedArgs, "--remove-tag", tagName)
+		} else {
+			processedArgs = append(processedArgs, arg)
+		}
+	}
+
+	if err := fs.Parse(processedArgs); err != nil {
 		fmt.Fprintln(ctx.Err)
 		fmt.Fprintln(ctx.Err, updateUsage(ctx.AppName))
 		return 2
 	}
 
-	// Parse positional arguments: separate IDs from +tag and ^tag shortcuts
+	// Parse positional arguments: separate IDs from +tag shortcuts
+	// Note: -tag is already handled by pre-processing above
 	remaining := fs.Args()
 	var ids []string
 	for _, arg := range remaining {
@@ -60,11 +76,6 @@ func RunUpdate(args []string, ctx CommandContext) int {
 			// Add tag shortcut: +tag
 			if len(arg) > 1 {
 				addTags = append(addTags, arg[1:])
-			}
-		} else if strings.HasPrefix(arg, "^") {
-			// Remove tag shortcut: ^tag
-			if len(arg) > 1 {
-				removeTags = append(removeTags, arg[1:])
 			}
 		} else {
 			// Regular ID
@@ -81,7 +92,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	hasAddTags := len(addTags) > 0
 	hasRemoveTags := len(removeTags) > 0
 	if title == "" && due == "" && project == "" && !hasAddTags && !hasRemoveTags {
-		fmt.Fprintf(ctx.Err, "Error: nothing to update. Provide --title/--due/--project/--add-tag/--remove-tag or use +tag/^tag shortcuts.\n")
+		fmt.Fprintf(ctx.Err, "Error: nothing to update. Provide --title/--due/--project/--add-tag/--remove-tag or use +tag/-tag shortcuts.\n")
 		return 2
 	}
 
@@ -234,7 +245,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 
 func updateUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s update [--path <dir>] [flags] <id> [<id> ...] [+tag] [^tag] ...
+  %s update [--path <dir>] [flags] <id> [<id> ...] [+tag] [-tag] ...
 
 Flags:
   --path <dir>        custom workspace path
@@ -246,10 +257,10 @@ Flags:
 
 Tag shortcuts:
   +tag                add a tag (e.g., +foo)
-  ^tag                remove a tag (e.g., ^bar)
+  -tag                remove a tag (e.g., -bar)
 
 Examples:
-  %s update 3 +foo ^bar
+  %s update 3 +foo -bar
   %s update 3 --title "New title" +important
 
 `, app, app, app)
