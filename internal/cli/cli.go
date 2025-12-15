@@ -102,6 +102,7 @@ func Run(argv []string, cfg Config) int {
 		"done":     true,
 		"remove":   true,
 		"archive":  true,
+		"reopen":   true,
 		"reindex":  true,
 		"describe": true,
 		"show":     true,
@@ -174,6 +175,12 @@ func Run(argv []string, cfg Config) int {
 			Out:     cfg.Out,
 			Err:     cfg.Err,
 		})
+	case "reopen":
+		return commands.RunReopen(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 	case "reindex":
 		return commands.RunReindex(args, commands.CommandContext{
 			AppName: cfg.AppName,
@@ -227,6 +234,7 @@ Commands:
   update    Update fields on one or more tasks
   done      Mark one or more tasks done
   archive   Archive one or more tasks
+  reopen    Reopen one or more tasks (change from inactive to active)
   remove    Remove one or more tasks (hard delete; requires --force)
 
   reindex   Reassign short IDs for active tasks
@@ -297,6 +305,14 @@ Flags:
 
 Flags:
   --path <dir>   custom workspace path
+
+`, app)
+
+	case "reopen":
+		return fmt.Sprintf(`Usage:
+  %s reopen <id> [<id> ...]
+
+Reopen one or more tasks, changing their status from inactive (archived or done) to active.
 
 `, app)
 
