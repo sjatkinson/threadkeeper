@@ -108,6 +108,7 @@ func Run(argv []string, cfg Config) int {
 		"show":     true,
 		"update":   true,
 		"path":     true,
+		"attach":   true,
 	}
 
 	// Load aliases from config
@@ -212,6 +213,12 @@ func Run(argv []string, cfg Config) int {
 			Out:     cfg.Out,
 			Err:     cfg.Err,
 		})
+	case "attach":
+		return commands.RunAttach(args, commands.CommandContext{
+			AppName: cfg.AppName,
+			Out:     cfg.Out,
+			Err:     cfg.Err,
+		})
 
 	default:
 		fmt.Fprintf(cfg.Err, "unknown command: %q\n\n", cmd)
@@ -246,6 +253,7 @@ Commands:
 
   reindex   Reassign short IDs for active tasks
   path      Print filesystem path for a thread directory
+  attach    Attach an inline note to a thread
   help      Help for a command
 
 Run:
@@ -367,6 +375,23 @@ Accepts either a durable thread ID or a short ID.
 
 Flags:
   --path <dir>   custom workspace path
+
+`, app)
+
+	case "attach":
+		return fmt.Sprintf(`Usage:
+  %s attach [--path <dir>] <thread-id>
+
+Attach an inline note to a thread. Opens your editor to capture note content.
+
+The note is stored as a content-addressed blob and recorded in attachments.jsonl.
+
+Flags:
+  --path <dir>   custom workspace path
+
+Environment variables:
+  TK_EDITOR      editor to use (defaults to $EDITOR, then vi)
+  EDITOR         editor to use (if TK_EDITOR not set)
 
 `, app)
 

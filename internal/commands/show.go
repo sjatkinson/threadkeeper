@@ -1,10 +1,13 @@
 package commands
 
 import (
+	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -59,11 +62,25 @@ func RunShow(args []string, ctx CommandContext) int {
 		return 1
 	}
 
+	// Get thread directory path
+	threadDir := store.ThreadPath(paths.ThreadsDir, t.ID)
+
+	// Load attachments
+	attachments, err := loadAttachments(threadDir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			// Only error if file exists but can't be read; missing file is OK
+			fmt.Fprintf(ctx.Err, "Warning: failed to load attachments: %v\n", err)
+		}
+		// If file doesn't exist, attachments will be nil, set to empty slice
+		attachments = []AttachmentEvent{}
+	}
+
 	// Display based on mode
 	if all {
-		displayFull(ctx.Out, t)
+		displayFull(ctx.Out, t, attachments)
 	} else {
-		displayMinimal(ctx.Out, t)
+		displayMinimal(ctx.Out, t, attachments)
 	}
 
 	return 0
@@ -80,8 +97,44 @@ Flags:
 `, app)
 }
 
-// displayMinimal shows a minimal view: short_id + title (if open) or just title, then description.
-func displayMinimal(out io.Writer, t *task.Task) {
+// loadAttachments reads and parses attachments.jsonl from a thread directory.
+// Returns empty slice and nil error if file doesn't exist.
+func loadAttachments(threadDir string) ([]AttachmentEvent, error) {
+	attachmentsPath := filepath.Join(threadDir, "attachments.jsonl")
+	f, err := os.Open(attachmentsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []AttachmentEvent{}, nil
+		}
+		return nil, err
+	}
+	defer f.Close()
+
+	var attachments []AttachmentEvent
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		var event AttachmentEvent
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			// Skip malformed lines but continue parsing
+			continue
+		}
+		attachments = append(attachments, event)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return attachments, nil
+}
+
+// displayMinimal shows a minimal view: short_id + title (if open) or just title, then description, then attachments.
+func displayMinimal(out io.Writer, t *task.Task, attachments []AttachmentEvent) {
 	if t.Status == task.StatusOpen && t.ShortID != nil {
 		fmt.Fprintf(out, "%d  %s\n", *t.ShortID, t.Title)
 	} else {
@@ -95,10 +148,89 @@ func displayMinimal(out io.Writer, t *task.Task) {
 	} else {
 		fmt.Fprintln(out, desc)
 	}
+
+	// Display attachments
+	if len(attachments) > 0 {
+		fmt.Fprintln(out)
+		displayAttachmentsTable(out, attachments)
+	}
+}
+
+// formatSize formats a byte size in human-readable format.
+func formatSize(bytes int64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// truncateID truncates an ID to show first 6 characters and last 4, with ellipsis.
+func truncateID(id string) string {
+	if len(id) <= 10 {
+		return id
+	}
+	return id[:6] + "…" + id[len(id)-4:]
+}
+
+// formatAttachmentDate formats a timestamp for attachment display.
+func formatAttachmentDate(tsStr string) string {
+	if tsStr == "" {
+		return "-"
+	}
+	ts, err := time.Parse(time.RFC3339, tsStr)
+	if err != nil {
+		return "-"
+	}
+	return ts.Format("2006-01-02 15:04Z")
+}
+
+// displayAttachmentsTable displays attachments in a compact table format.
+func displayAttachmentsTable(out io.Writer, attachments []AttachmentEvent) {
+	// Filter to only "add" operations
+	var addAttachments []AttachmentEvent
+	for _, att := range attachments {
+		if att.Op == "add" {
+			addAttachments = append(addAttachments, att)
+		}
+	}
+
+	if len(addAttachments) == 0 {
+		fmt.Fprintln(out, "(no attachments)")
+		return
+	}
+
+	// Print header
+	fmt.Fprintf(out, "#  %-12s  %-6s  %-24s  %-6s  %s\n", "ID", "KIND", "NAME", "SIZE", "CREATED")
+
+	// Print each attachment
+	for i, att := range addAttachments {
+		truncatedID := truncateID(att.Att.AttID)
+		kind := att.Att.Kind
+		name := att.Att.Name
+
+		// Format size: show raw bytes for notes, "-" for others
+		var sizeStr string
+		if att.Att.Kind == "note" {
+			sizeStr = fmt.Sprintf("%d", att.Att.Size)
+		} else {
+			sizeStr = "-"
+		}
+
+		created := formatAttachmentDate(att.TS)
+
+		fmt.Fprintf(out, "%-2d %-12s  %-6s  %-24s  %-6s  %s\n",
+			i+1, truncatedID, kind, name, sizeStr, created)
+	}
 }
 
 // displayFull shows full metadata and details.
-func displayFull(out io.Writer, t *task.Task) {
+func displayFull(out io.Writer, t *task.Task, attachments []AttachmentEvent) {
 	// Status flag mapping
 	flagMap := map[task.Status]string{
 		task.StatusOpen:     " ",
@@ -168,5 +300,15 @@ func displayFull(out io.Writer, t *task.Task) {
 		fmt.Fprintln(out, "(no description)")
 	} else {
 		fmt.Fprintln(out, desc)
+	}
+
+	// Attachments
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "Attachments")
+	fmt.Fprintln(out, "-----------")
+	if len(attachments) == 0 {
+		fmt.Fprintln(out, "(no attachments)")
+	} else {
+		displayAttachmentsTable(out, attachments)
 	}
 }
