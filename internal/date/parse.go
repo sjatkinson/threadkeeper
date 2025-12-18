@@ -3,6 +3,7 @@ package date
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,19 +62,24 @@ func ParseDate(input string, locale config.DateLocale, clock Clock, tz *time.Loc
 	now := clock.Now().In(tz)
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, tz)
 
-	// Step 1: Try ISO-like formats (YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD, YYYYMMDD)
+	// Step 1: Check for shortcuts (today, +1, +2, etc.)
+	if canonical, err := parseShortcuts(input, today); err == nil {
+		return canonical, nil
+	}
+
+	// Step 2: Try ISO-like formats (YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD, YYYYMMDD)
 	if canonical, err := parseISOFormats(input); err == nil {
 		return canonical, nil
 	}
 
-	// Step 2: If locale is us or eu, try locale-specific formats with year
+	// Step 3: If locale is us or eu, try locale-specific formats with year
 	if locale == config.DateLocaleUS || locale == config.DateLocaleEU {
 		if canonical, err := parseLocaleWithYear(input, locale, today); err == nil {
 			return canonical, nil
 		}
 	}
 
-	// Step 3: If locale is us or eu, try locale-specific formats without year (next-occurrence)
+	// Step 4: If locale is us or eu, try locale-specific formats without year (next-occurrence)
 	if locale == config.DateLocaleUS || locale == config.DateLocaleEU {
 		if canonical, err := parseLocaleWithoutYear(input, locale, today); err == nil {
 			return canonical, nil
@@ -90,7 +96,7 @@ func ParseDate(input string, locale config.DateLocale, clock Clock, tz *time.Loc
 		}
 	}
 
-	// Step 4: If we get here and locale is iso, check if input looks like numeric format
+	// Step 5: If we get here and locale is iso, check if input looks like numeric format
 	if locale == config.DateLocaleISO {
 		if looksLikeNumericFormat(input) {
 			return "", fmt.Errorf("invalid due date: ambiguous numeric format %q. Use YYYY-MM-DD or set date_locale=us or date_locale=eu", input)
@@ -99,6 +105,33 @@ func ParseDate(input string, locale config.DateLocale, clock Clock, tz *time.Loc
 
 	// Final error
 	return "", fmt.Errorf("invalid due date: unable to parse %q", input)
+}
+
+// parseShortcuts handles date shortcuts like "today", "+1", "+2", etc.
+func parseShortcuts(input string, today time.Time) (string, error) {
+	input = strings.ToLower(strings.TrimSpace(input))
+
+	// Check for "today"
+	if input == "today" {
+		return today.Format("2006-01-02"), nil
+	}
+
+	// Check for "+N" pattern where N is a positive integer
+	if strings.HasPrefix(input, "+") {
+		daysStr := input[1:]
+		days, err := strconv.Atoi(daysStr)
+		if err != nil {
+			return "", fmt.Errorf("not a shortcut")
+		}
+		if days < 0 {
+			return "", fmt.Errorf("invalid shortcut: days must be non-negative")
+		}
+		// Add days to today
+		targetDate := today.AddDate(0, 0, days)
+		return targetDate.Format("2006-01-02"), nil
+	}
+
+	return "", fmt.Errorf("not a shortcut")
 }
 
 // parseISOFormats tries to parse ISO-like formats: YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD, YYYYMMDD

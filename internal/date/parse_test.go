@@ -266,6 +266,48 @@ func TestParseDate_ErrorMessages(t *testing.T) {
 	}
 }
 
+func TestParseDate_Shortcuts(t *testing.T) {
+	// Use a fixed date: 2025-12-15
+	clock := FixedClock{FixedTime: time.Date(2025, 12, 15, 10, 0, 0, 0, time.UTC)}
+	tz, _ := time.LoadLocation("America/Los_Angeles")
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+		locale   config.DateLocale
+		wantErr  bool
+	}{
+		{"today", "today", "2025-12-15", config.DateLocaleISO, false},
+		{"TODAY uppercase", "TODAY", "2025-12-15", config.DateLocaleISO, false},
+		{"Today mixed case", "Today", "2025-12-15", config.DateLocaleISO, false},
+		{"+0", "+0", "2025-12-15", config.DateLocaleISO, false},
+		{"+1", "+1", "2025-12-16", config.DateLocaleISO, false},
+		{"+2", "+2", "2025-12-17", config.DateLocaleISO, false},
+		{"+7", "+7", "2025-12-22", config.DateLocaleISO, false},
+		{"+30", "+30", "2026-01-14", config.DateLocaleISO, false},
+		{"+365", "+365", "2026-12-15", config.DateLocaleISO, false},
+		{"today with US locale", "today", "2025-12-15", config.DateLocaleUS, false},
+		{"+1 with EU locale", "+1", "2025-12-16", config.DateLocaleEU, false},
+		{"invalid: +abc", "+abc", "", config.DateLocaleISO, true},
+		{"invalid: +-1", "+-1", "", config.DateLocaleISO, true},
+		{"invalid: just +", "+", "", config.DateLocaleISO, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ParseDate(tt.input, tt.locale, clock, tz)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseDate() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && result != tt.expected {
+				t.Errorf("ParseDate() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestFormatCanonical(t *testing.T) {
 	tests := []struct {
 		name     string

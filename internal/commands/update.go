@@ -274,9 +274,15 @@ Tag shortcuts:
   +tag                add a tag (e.g., +foo)
   -tag                remove a tag (e.g., -bar)
 
+Due date shortcuts:
+  today               set due date to today
+  +N                  set due date to today + N days (e.g., +1, +2, +7)
+
 Examples:
   %s update 3 +foo -bar
   %s update 3 --title "New title" +important
+  %s update 3 --due today
+  %s update 3 --due +7
 
-`, app, app, app)
+`, app, app, app, app)
 }
