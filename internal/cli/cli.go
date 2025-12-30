@@ -11,6 +11,16 @@ import (
 	"github.com/sjatkinson/threadkeeper/internal/config"
 )
 
+// CommandInfo holds metadata for a command.
+// This provides a single source of truth for command name, description,
+// usage text, and runner function.
+type CommandInfo struct {
+	Name        string
+	Description string
+	Usage       func(app string) string
+	Runner      func(args []string, ctx commands.CommandContext) int
+}
+
 type Config struct {
 	AppName string
 	Out     io.Writer
