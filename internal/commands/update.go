@@ -284,5 +284,5 @@ Examples:
   %s update 3 --due today
   %s update 3 --due +7
 
-`, app, app, app, app)
+`, app, app, app, app, app)
 }

@@ -19,9 +19,9 @@ func TestRunReopen(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	tasksDir := filepath.Join(tmpDir, "tasks")
-	if err := os.MkdirAll(tasksDir, 0755); err != nil {
-		t.Fatalf("Failed to create tasks dir: %v", err)
+	threadsDir := filepath.Join(tmpDir, "threads")
+	if err := os.MkdirAll(threadsDir, 0755); err != nil {
+		t.Fatalf("Failed to create threads dir: %v", err)
 	}
 
 	// Set environment variable so the command can find the workspace
@@ -30,7 +30,7 @@ func TestRunReopen(t *testing.T) {
 	os.Setenv("THREADKEEPER_WORKSPACE", tmpDir)
 
 	// Create a store
-	st := store.NewFileStore(tasksDir)
+	st := store.NewFileStore(threadsDir)
 
 	// Create test tasks with different statuses
 	now := time.Now().UTC()
