@@ -163,6 +163,21 @@ func computeCurrentAttachments(events []AttachmentEvent) []AttachmentEvent {
 	return result
 }
 
+// blobPath computes the filesystem path for a blob given thread directory and BlobRef.
+// Returns empty string if algorithm is not supported.
+// Path format: <thread-dir>/blobs/<algo>/<first2>/<next2>/<hash>
+func blobPath(threadDir string, blob BlobRef) string {
+	if blob.Algo != "sha256" {
+		return "" // Unknown algorithm
+	}
+	if len(blob.Hash) < 4 {
+		return "" // Hash too short
+	}
+	first2 := blob.Hash[0:2]
+	next2 := blob.Hash[2:4]
+	return filepath.Join(threadDir, "blobs", "sha256", first2, next2, blob.Hash)
+}
+
 // displayMinimal shows a minimal view: short_id + title (if open) or just title, then description, then attachments.
 func displayMinimal(out io.Writer, t *task.Task, attachments []AttachmentEvent) {
 	if t.Status == task.StatusOpen && t.ShortID != nil {
