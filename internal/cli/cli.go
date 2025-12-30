@@ -60,6 +60,88 @@ func getAllCommands() []CommandInfo {
 	return cmds
 }
 
+func init() {
+	// Register all commands with their metadata
+	registerCommand(CommandInfo{
+		Name:        "init",
+		Description: "Initialize the workspace",
+		Usage:       initUsage,
+		Runner:      commands.RunInit,
+	})
+	registerCommand(CommandInfo{
+		Name:        "add",
+		Description: "Add a new task",
+		Usage:       addUsage,
+		Runner:      commands.RunAdd,
+	})
+	registerCommand(CommandInfo{
+		Name:        "list",
+		Description: "List tasks",
+		Usage:       listUsage,
+		Runner:      commands.RunList,
+	})
+	registerCommand(CommandInfo{
+		Name:        "show",
+		Description: "Show details for a single task",
+		Usage:       showUsage,
+		Runner:      commands.RunShow,
+	})
+	registerCommand(CommandInfo{
+		Name:        "describe",
+		Description: "Edit a task description in $EDITOR (later)",
+		Usage:       describeUsage,
+		Runner:      commands.RunDescribe,
+	})
+	registerCommand(CommandInfo{
+		Name:        "update",
+		Description: "Update fields on one or more tasks",
+		Usage:       updateUsage,
+		Runner:      commands.RunUpdate,
+	})
+	registerCommand(CommandInfo{
+		Name:        "done",
+		Description: "Mark one or more tasks done",
+		Usage:       doneUsage,
+		Runner:      commands.RunDone,
+	})
+	registerCommand(CommandInfo{
+		Name:        "archive",
+		Description: "Archive one or more tasks",
+		Usage:       archiveUsage,
+		Runner:      commands.RunArchive,
+	})
+	registerCommand(CommandInfo{
+		Name:        "reopen",
+		Description: "Reopen one or more tasks (change from inactive to active)",
+		Usage:       reopenUsage,
+		Runner:      commands.RunReopen,
+	})
+	registerCommand(CommandInfo{
+		Name:        "remove",
+		Description: "Remove one or more tasks (hard delete; requires --force)",
+		Usage:       removeUsage,
+		Runner:      commands.RunRemove,
+	})
+	registerCommand(CommandInfo{
+		Name:        "reindex",
+		Description: "Reassign short IDs for active tasks",
+		Usage:       reindexUsage,
+		Runner:      commands.RunReindex,
+	})
+	registerCommand(CommandInfo{
+		Name:        "path",
+		Description: "Print filesystem path for a thread directory",
+		Usage:       pathUsage,
+		Runner:      commands.RunPath,
+	})
+	registerCommand(CommandInfo{
+		Name:        "attach",
+		Description: "Attach an inline note to a thread",
+		Usage:       attachUsage,
+		Runner:      commands.RunAttach,
+	})
+}
+
 type Config struct {
 	AppName string
 	Out     io.Writer
@@ -310,10 +392,9 @@ Run:
 `, app, app, app)
 }
 
-func commandUsage(app, cmd string) string {
-	switch cmd {
-	case "init":
-		return fmt.Sprintf(`Usage:
+// Usage functions extracted from commandUsage() switch
+func initUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s init [--path <dir>] [--force]
 
 Flags:
@@ -321,9 +402,10 @@ Flags:
   --force          allow initialization even if tasks exist (future: may wipe)
 
 `, app)
+}
 
-	case "add":
-		return fmt.Sprintf(`Usage:
+func addUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s add <title> [flags]
 
 Flags:
@@ -334,9 +416,10 @@ Flags:
   --tag <tag>            repeatable
 
 `, app)
+}
 
-	case "list":
-		return fmt.Sprintf(`Usage:
+func listUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s list [flags]
 
 Flags:
@@ -348,62 +431,70 @@ Flags:
   --tag <tag>                 filter by tag (normalized)
 
 `, app)
+}
 
-	case "done":
-		return fmt.Sprintf(`Usage:
+func doneUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s done [--path <dir>] <id> [<id> ...]
 
 `, app)
+}
 
-	case "remove":
-		return fmt.Sprintf(`Usage:
+func removeUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s remove [--path <dir>] --force <id> [<id> ...]
 
 Flags:
   --force   actually delete (required)
 
 `, app)
+}
 
-	case "archive":
-		return fmt.Sprintf(`Usage:
+func archiveUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s archive [--path <dir>] <id> [<id> ...]
 
 Flags:
   --path <dir>   custom workspace path
 
 `, app)
+}
 
-	case "reopen":
-		return fmt.Sprintf(`Usage:
+func reopenUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s reopen <id> [<id> ...]
 
 Reopen one or more tasks, changing their status from inactive (archived or done) to active.
 
 `, app)
+}
 
-	case "reindex":
-		return fmt.Sprintf(`Usage:
+func reindexUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s reindex [--path <dir>]
 
 `, app)
+}
 
-	case "describe":
-		return fmt.Sprintf(`Usage:
+func describeUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s describe [--path <dir>] <id>
 
 `, app)
+}
 
-	case "show":
-		return fmt.Sprintf(`Usage:
+func showUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s show [--path <dir>] [--all] <id>
 
 Flags:
   --all   show full metadata
 
 `, app)
+}
 
-	case "update":
-		return fmt.Sprintf(`Usage:
+func updateUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s update [--path <dir>] <id> [<id> ...] [flags]
 
 Flags:
@@ -414,9 +505,10 @@ Flags:
   --remove-tag <tag>    repeatable
 
 `, app)
+}
 
-	case "path":
-		return fmt.Sprintf(`Usage:
+func pathUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s path [--path <dir>] <thread-id>
 
 Prints the canonical filesystem path for the thread directory.
@@ -426,9 +518,10 @@ Flags:
   --path <dir>   custom workspace path
 
 `, app)
+}
 
-	case "attach":
-		return fmt.Sprintf(`Usage:
+func attachUsage(app string) string {
+	return fmt.Sprintf(`Usage:
   %s attach [--path <dir>] <thread-id>
 
 Attach an inline note to a thread. Opens your editor to capture note content.
@@ -443,10 +536,14 @@ Environment variables:
   EDITOR         editor to use (if TK_EDITOR not set)
 
 `, app)
+}
 
-	default:
+func commandUsage(app, cmd string) string {
+	info := getCommand(cmd)
+	if info == nil {
 		return fmt.Sprintf("Unknown command %q\n\n%s", cmd, usage(app))
 	}
+	return info.Usage(app)
 }
 
 // validateAliases filters and validates aliases:
