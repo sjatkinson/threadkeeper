@@ -140,6 +140,12 @@ func init() {
 		Usage:       attachUsage,
 		Runner:      commands.RunAttach,
 	})
+	registerCommand(CommandInfo{
+		Name:        "open",
+		Description: "Open an attachment from a thread",
+		Usage:       openUsage,
+		Runner:      commands.RunOpen,
+	})
 }
 
 type Config struct {
@@ -275,7 +281,7 @@ func usage(app string) string {
 
 	// Preserve specific ordering: init first, help last, others in registration order
 	// Build ordered list manually to maintain desired output
-	orderedNames := []string{"init", "add", "list", "show", "describe", "update", "done", "archive", "reopen", "remove", "reindex", "path", "attach"}
+	orderedNames := []string{"init", "add", "list", "show", "describe", "update", "done", "archive", "reopen", "remove", "reindex", "path", "attach", "open"}
 
 	var cmdLines []string
 	seen := make(map[string]bool)
@@ -463,6 +469,25 @@ Environment variables:
   EDITOR         editor to use (if TK_EDITOR not set)
 
 `, app)
+}
+
+func openUsage(app string) string {
+	return fmt.Sprintf(`Usage:
+  %s open [--path <dir>] [--att <index> | --att-id <id>] [--print-path] <thread-id>
+
+Open an attachment from a thread.
+
+Flags:
+  --path <dir>      custom workspace path
+  --att <index>     attachment index (1-based, from 'show' output)
+  --att-id <id>     attachment ID (alternative to --att)
+  --print-path      print blob path instead of opening
+
+Examples:
+  %s open 1 --att 1
+  %s open 1 --att-id 01ARZ3NDEKTSV4RRFFQ69G5FAV --print-path
+
+`, app, app, app)
 }
 
 func commandUsage(app, cmd string) string {
