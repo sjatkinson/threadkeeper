@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -133,6 +134,35 @@ func loadAttachments(threadDir string) ([]AttachmentEvent, error) {
 	return attachments, nil
 }
 
+// computeCurrentAttachments processes JSONL events and returns active attachments
+// sorted by timestamp (stable ordering for indexing).
+// Handles add/remove operations: only attachments that have been added and not removed are returned.
+func computeCurrentAttachments(events []AttachmentEvent) []AttachmentEvent {
+	active := make(map[string]AttachmentEvent) // keyed by att_id
+
+	for _, event := range events {
+		switch event.Op {
+		case "add":
+			active[event.Att.AttID] = event
+		case "remove":
+			delete(active, event.Att.AttID)
+		}
+	}
+
+	// Convert to slice and sort by timestamp
+	result := make([]AttachmentEvent, 0, len(active))
+	for _, event := range active {
+		result = append(result, event)
+	}
+
+	// Sort by TS (RFC3339 string comparison works for chronological order)
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].TS < result[j].TS
+	})
+
+	return result
+}
+
 // displayMinimal shows a minimal view: short_id + title (if open) or just title, then description, then attachments.
 func displayMinimal(out io.Writer, t *task.Task, attachments []AttachmentEvent) {
 	if t.Status == task.StatusOpen && t.ShortID != nil {
@@ -192,15 +222,10 @@ func formatAttachmentDate(tsStr string) string {
 
 // displayAttachmentsTable displays attachments in a compact table format.
 func displayAttachmentsTable(out io.Writer, attachments []AttachmentEvent) {
-	// Filter to only "add" operations
-	var addAttachments []AttachmentEvent
-	for _, att := range attachments {
-		if att.Op == "add" {
-			addAttachments = append(addAttachments, att)
-		}
-	}
+	// Compute current attachments (handles add/remove operations)
+	currentAtts := computeCurrentAttachments(attachments)
 
-	if len(addAttachments) == 0 {
+	if len(currentAtts) == 0 {
 		fmt.Fprintln(out, "(no attachments)")
 		return
 	}
@@ -209,7 +234,7 @@ func displayAttachmentsTable(out io.Writer, attachments []AttachmentEvent) {
 	fmt.Fprintf(out, "#  %-12s  %-6s  %-24s  %-6s  %s\n", "ID", "KIND", "NAME", "SIZE", "CREATED")
 
 	// Print each attachment
-	for i, att := range addAttachments {
+	for i, att := range currentAtts {
 		truncatedID := truncateID(att.Att.AttID)
 		kind := att.Att.Kind
 		name := att.Att.Name
