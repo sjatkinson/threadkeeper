@@ -21,6 +21,45 @@ type CommandInfo struct {
 	Runner      func(args []string, ctx commands.CommandContext) int
 }
 
+// commandRegistry holds all registered commands.
+// Commands are registered in init() and provide a single source of truth
+// for command metadata, dispatch, and help generation.
+var commandRegistry = make(map[string]CommandInfo)
+
+// registerCommand adds a command to the registry.
+// This is idempotent - registering the same command twice overwrites the first.
+func registerCommand(info CommandInfo) {
+	commandRegistry[info.Name] = info
+}
+
+// getCommand returns the CommandInfo for the given command name,
+// or nil if the command is not registered.
+func getCommand(name string) *CommandInfo {
+	info, ok := commandRegistry[name]
+	if !ok {
+		return nil
+	}
+	return &info
+}
+
+// getAllCommands returns all registered commands sorted by name.
+// This is used for generating the usage output.
+func getAllCommands() []CommandInfo {
+	cmds := make([]CommandInfo, 0, len(commandRegistry))
+	for _, cmd := range commandRegistry {
+		cmds = append(cmds, cmd)
+	}
+	// Sort by name for consistent output
+	for i := 0; i < len(cmds)-1; i++ {
+		for j := i + 1; j < len(cmds); j++ {
+			if cmds[i].Name > cmds[j].Name {
+				cmds[i], cmds[j] = cmds[j], cmds[i]
+			}
+		}
+	}
+	return cmds
+}
+
 type Config struct {
 	AppName string
 	Out     io.Writer
