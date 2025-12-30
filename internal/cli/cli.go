@@ -224,24 +224,6 @@ func Run(argv []string, cfg Config) int {
 	cmd := rest[0]
 	args := rest[1:]
 
-	// Define built-in commands (these take precedence over aliases)
-	builtInCommands := map[string]bool{
-		"help":     true,
-		"init":     true,
-		"add":      true,
-		"list":     true,
-		"done":     true,
-		"remove":   true,
-		"archive":  true,
-		"reopen":   true,
-		"reindex":  true,
-		"describe": true,
-		"show":     true,
-		"update":   true,
-		"path":     true,
-		"attach":   true,
-	}
-
 	// Load aliases from config
 	rawAliases, err := config.LoadAliases()
 	if err != nil {
@@ -253,10 +235,10 @@ func Run(argv []string, cfg Config) int {
 	}
 
 	// Validate and filter aliases
-	aliases := validateAliases(rawAliases, builtInCommands, cfg.Verbose || cfg.Debug, cfg.Err)
+	aliases := validateAliases(rawAliases, cfg.Verbose || cfg.Debug, cfg.Err)
 
 	// Resolve alias: built-in commands take precedence
-	if !builtInCommands[cmd] {
+	if getCommand(cmd) == nil {
 		if target, ok := aliases[cmd]; ok {
 			// Alias is already validated, so target is guaranteed to be a built-in
 			cmd = target
@@ -551,12 +533,12 @@ func commandUsage(app, cmd string) string {
 // - Removes aliases that point to non-existent commands
 // - Removes aliases that point to other aliases (no recursion)
 // Returns a validated map of alias -> built-in command.
-func validateAliases(raw config.Aliases, builtInCommands map[string]bool, verbose bool, errOut io.Writer) config.Aliases {
+func validateAliases(raw config.Aliases, verbose bool, errOut io.Writer) config.Aliases {
 	valid := make(config.Aliases)
 
 	for alias, target := range raw {
 		// Skip aliases that conflict with built-in commands
-		if builtInCommands[alias] {
+		if getCommand(alias) != nil {
 			if verbose {
 				fmt.Fprintf(errOut, "Warning: alias %q conflicts with built-in command, ignoring\n", alias)
 			}
@@ -564,7 +546,7 @@ func validateAliases(raw config.Aliases, builtInCommands map[string]bool, verbos
 		}
 
 		// Check if target is a built-in command
-		if !builtInCommands[target] {
+		if getCommand(target) == nil {
 			// Check if target is another alias (recursion)
 			if _, isAlias := raw[target]; isAlias {
 				if verbose {
