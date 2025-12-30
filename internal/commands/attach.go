@@ -370,4 +370,3 @@ Environment variables:
 
 `, app)
 }
-

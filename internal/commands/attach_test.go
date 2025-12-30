@@ -246,4 +246,3 @@ func TestBlobPathComputation(t *testing.T) {
 		t.Errorf("Blob path does not follow expected structure: %v", expectedPath)
 	}
 }
-
