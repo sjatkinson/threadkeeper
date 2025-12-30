@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 
 	"github.com/sjatkinson/threadkeeper/internal/config"
 	"github.com/sjatkinson/threadkeeper/internal/store"
@@ -91,7 +92,24 @@ func RunOpen(args []string, ctx CommandContext) int {
 	fs.StringVar(&attID, "att-id", "", "attachment ID (alternative to --att)")
 	fs.BoolVar(&printPath, "print-path", false, "print path instead of opening")
 
-	if err := fs.Parse(args); err != nil {
+	// Preprocess args: if first arg looks like a thread ID (not a flag), move it to the end
+	// This allows both "tk open <id> --att 1" and "tk open --att 1 <id>"
+	processedArgs := make([]string, 0, len(args))
+	var threadIDCandidate string
+	for i, arg := range args {
+		if i == 0 && !strings.HasPrefix(arg, "-") && threadIDCandidate == "" {
+			// First non-flag arg might be thread ID - save it for later
+			threadIDCandidate = arg
+		} else {
+			processedArgs = append(processedArgs, arg)
+		}
+	}
+	// If we found a thread ID candidate at the start, append it at the end
+	if threadIDCandidate != "" {
+		processedArgs = append(processedArgs, threadIDCandidate)
+	}
+
+	if err := fs.Parse(processedArgs); err != nil {
 		fmt.Fprintln(ctx.Err)
 		fmt.Fprintln(ctx.Err, openUsage(ctx.AppName))
 		return 2

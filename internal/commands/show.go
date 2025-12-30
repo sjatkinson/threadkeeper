@@ -81,7 +81,15 @@ func RunShow(args []string, ctx CommandContext) int {
 
 	// Display based on mode
 	if full || all {
-		displayFull(ctx.Out, t, attachments)
+		// In full mode, load with metadata to show malformed line warnings
+		attResult, err := loadAttachmentsWithMetadata(threadDir)
+		if err != nil && !os.IsNotExist(err) {
+			fmt.Fprintf(ctx.Err, "Warning: failed to load attachments: %v\n", err)
+			attResult = &loadAttachmentsResult{Events: attachments, MalformedLine: 0}
+		} else if err == nil {
+			attachments = attResult.Events
+		}
+		displayFull(ctx.Out, t, attachments, attResult.MalformedLine)
 	} else {
 		displayContextual(ctx.Out, t, attachments, ctx.AppName)
 	}
@@ -101,21 +109,43 @@ Flags:
 `, app)
 }
 
+// loadAttachmentsResult holds both parsed events and metadata about parsing.
+type loadAttachmentsResult struct {
+	Events        []AttachmentEvent
+	MalformedLine int // count of malformed lines encountered
+}
+
 // loadAttachments reads and parses attachments.jsonl from a thread directory.
 // Returns empty slice and nil error if file doesn't exist.
 func loadAttachments(threadDir string) ([]AttachmentEvent, error) {
+	result, err := loadAttachmentsWithMetadata(threadDir)
+	if err != nil {
+		return nil, err
+	}
+	return result.Events, nil
+}
+
+// loadAttachmentsWithMetadata reads attachments.jsonl and returns events plus metadata.
+// This is used when we need to track malformed lines for warnings.
+func loadAttachmentsWithMetadata(threadDir string) (*loadAttachmentsResult, error) {
 	attachmentsPath := filepath.Join(threadDir, "attachments.jsonl")
 	f, err := os.Open(attachmentsPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []AttachmentEvent{}, nil
+			return &loadAttachmentsResult{Events: []AttachmentEvent{}, MalformedLine: 0}, nil
 		}
 		return nil, err
 	}
 	defer f.Close()
 
 	var attachments []AttachmentEvent
+	malformedCount := 0
 	scanner := bufio.NewScanner(f)
+	// Increase buffer size for large JSONL events (default is 64KB, increase to 1MB)
+	const maxCapacity = 1024 * 1024 // 1MB
+	buf := make([]byte, 0, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -125,6 +155,7 @@ func loadAttachments(threadDir string) ([]AttachmentEvent, error) {
 		var event AttachmentEvent
 		if err := json.Unmarshal([]byte(line), &event); err != nil {
 			// Skip malformed lines but continue parsing
+			malformedCount++
 			continue
 		}
 		attachments = append(attachments, event)
@@ -134,7 +165,7 @@ func loadAttachments(threadDir string) ([]AttachmentEvent, error) {
 		return nil, err
 	}
 
-	return attachments, nil
+	return &loadAttachmentsResult{Events: attachments, MalformedLine: malformedCount}, nil
 }
 
 // computeCurrentAttachments processes JSONL events and returns active attachments
@@ -342,7 +373,7 @@ func displayAttachmentsTable(out io.Writer, attachments []AttachmentEvent) {
 }
 
 // displayFull shows full metadata and details.
-func displayFull(out io.Writer, t *task.Task, attachments []AttachmentEvent) {
+func displayFull(out io.Writer, t *task.Task, attachments []AttachmentEvent, malformedLineCount int) {
 	// Status flag mapping
 	flagMap := map[task.Status]string{
 		task.StatusOpen:     " ",
@@ -364,6 +395,12 @@ func displayFull(out io.Writer, t *task.Task, attachments []AttachmentEvent) {
 
 	fmt.Fprintln(out, header)
 	fmt.Fprintln(out, strings.Repeat("-", len(header)))
+
+	// Warn about malformed lines if any
+	if malformedLineCount > 0 {
+		fmt.Fprintf(out, "Warning: %d malformed line(s) in attachments.jsonl were skipped\n", malformedLineCount)
+		fmt.Fprintln(out)
+	}
 
 	// Status
 	fmt.Fprintf(out, "Status : [%s] %s\n", flag, t.Status)
