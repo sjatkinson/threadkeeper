@@ -81,7 +81,7 @@ func RunShow(args []string, ctx CommandContext) int {
 	if all {
 		displayFull(ctx.Out, t, attachments)
 	} else {
-		displayMinimal(ctx.Out, t, attachments)
+		displayContextual(ctx.Out, t, attachments, ctx.AppName)
 	}
 
 	return 0
@@ -178,26 +178,62 @@ func blobPath(threadDir string, blob BlobRef) string {
 	return filepath.Join(threadDir, "blobs", "sha256", first2, next2, blob.Hash)
 }
 
-// displayMinimal shows a minimal view: short_id + title (if open) or just title, then description, then attachments.
-func displayMinimal(out io.Writer, t *task.Task, attachments []AttachmentEvent) {
-	if t.Status == task.StatusOpen && t.ShortID != nil {
-		fmt.Fprintf(out, "%d  %s\n", *t.ShortID, t.Title)
-	} else {
-		fmt.Fprintf(out, "%s\n", t.Title)
+// displayContextual shows a contextual glance: header with key fields, description if present, attachments if present.
+func displayContextual(out io.Writer, t *task.Task, attachments []AttachmentEvent, appName string) {
+	// Header: Task ID
+	var headerParts []string
+	if t.ShortID != nil {
+		headerParts = append(headerParts, fmt.Sprintf("Task %d", *t.ShortID))
+	}
+	headerParts = append(headerParts, fmt.Sprintf("(%s)", t.ID))
+	fmt.Fprintf(out, "%s\n", strings.Join(headerParts, " "))
+
+	// Metadata: Status, Project, Due
+	var metaParts []string
+	metaParts = append(metaParts, fmt.Sprintf("Status: %s", t.Status))
+	if t.Project != "" {
+		metaParts = append(metaParts, fmt.Sprintf("Project: %s", t.Project))
+	}
+	if t.DueAt != nil {
+		metaParts = append(metaParts, fmt.Sprintf("Due: %s", t.DueAt.Format("2006-01-02")))
+	}
+	if len(metaParts) > 0 {
+		fmt.Fprintf(out, "%s\n", strings.Join(metaParts, " | "))
 	}
 	fmt.Fprintln(out)
 
+	// Description (only if present)
 	desc := strings.TrimSpace(t.Description)
-	if desc == "" {
-		fmt.Fprintln(out, "(no description)")
-	} else {
+	if desc != "" {
+		fmt.Fprintln(out, "Description")
+		fmt.Fprintln(out, strings.Repeat("-", 11))
 		fmt.Fprintln(out, desc)
+		fmt.Fprintln(out)
 	}
 
-	// Display attachments
-	if len(attachments) > 0 {
-		fmt.Fprintln(out)
-		displayAttachmentsTable(out, attachments)
+	// Attachments (only if present)
+	currentAtts := computeCurrentAttachments(attachments)
+	if len(currentAtts) > 0 {
+		fmt.Fprintln(out, "Attachments")
+		fmt.Fprintln(out, strings.Repeat("-", 11))
+		for i, att := range currentAtts {
+			kind := att.Att.Kind
+			name := att.Att.Name
+
+			// Format size: show raw bytes for notes, "-" for others
+			var sizeStr string
+			if att.Att.Kind == "note" {
+				sizeStr = fmt.Sprintf("%d B", att.Att.Size)
+			} else {
+				sizeStr = "-"
+			}
+
+			created := formatAttachmentDate(att.TS)
+
+			// Format: "N. name (kind, size, date)  open: tk open <id> --att N"
+			fmt.Fprintf(out, "%d. %s (%s, %s, %s)  open: %s open %s --att %d\n",
+				i+1, name, kind, sizeStr, created, appName, t.ID, i+1)
+		}
 	}
 }
 
