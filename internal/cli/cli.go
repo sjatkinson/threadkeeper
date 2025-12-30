@@ -410,10 +410,12 @@ func describeUsage(app string) string {
 
 func showUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s show [--path <dir>] [--all] <id>
+  %s show [--path <dir>] [--full] <id>
 
 Flags:
-  --all   show full metadata
+  --path <dir>   custom workspace path
+  --full         show full metadata and history
+  --all          show full metadata (deprecated, use --full)
 
 `, app)
 }

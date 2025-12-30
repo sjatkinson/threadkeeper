@@ -25,9 +25,11 @@ func RunShow(args []string, ctx CommandContext) int {
 	}
 
 	var path string
-	var all bool
+	var full bool
+	var all bool // deprecated, use --full
 	fs.StringVar(&path, "path", "", "custom workspace path")
-	fs.BoolVar(&all, "all", false, "show full metadata")
+	fs.BoolVar(&full, "full", false, "show full metadata and history")
+	fs.BoolVar(&all, "all", false, "show full metadata (deprecated, use --full)")
 
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintln(ctx.Err)
@@ -78,7 +80,7 @@ func RunShow(args []string, ctx CommandContext) int {
 	}
 
 	// Display based on mode
-	if all {
+	if full || all {
 		displayFull(ctx.Out, t, attachments)
 	} else {
 		displayContextual(ctx.Out, t, attachments, ctx.AppName)
@@ -89,11 +91,12 @@ func RunShow(args []string, ctx CommandContext) int {
 
 func showUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s show [--path <dir>] [--all] <id>
+  %s show [--path <dir>] [--full] <id>
 
 Flags:
   --path <dir>   custom workspace path
-  --all          show full metadata
+  --full         show full metadata and history
+  --all          show full metadata (deprecated, use --full)
 
 `, app)
 }
@@ -161,6 +164,39 @@ func computeCurrentAttachments(events []AttachmentEvent) []AttachmentEvent {
 	})
 
 	return result
+}
+
+// displayAttachmentsHistory displays all attachment events in chronological order.
+// This is used in full view to show complete history including removed attachments.
+func displayAttachmentsHistory(out io.Writer, events []AttachmentEvent) {
+	if len(events) == 0 {
+		fmt.Fprintln(out, "(no attachment events)")
+		return
+	}
+
+	// Print header
+	fmt.Fprintf(out, "#  %-8s  %-12s  %-6s  %-24s  %-6s  %s\n", "OP", "ID", "KIND", "NAME", "SIZE", "CREATED")
+
+	// Print each event in chronological order
+	for i, event := range events {
+		truncatedID := truncateID(event.Att.AttID)
+		op := event.Op
+		kind := event.Att.Kind
+		name := event.Att.Name
+
+		// Format size: show raw bytes for notes, "-" for others
+		var sizeStr string
+		if event.Att.Kind == "note" {
+			sizeStr = fmt.Sprintf("%d", event.Att.Size)
+		} else {
+			sizeStr = "-"
+		}
+
+		created := formatAttachmentDate(event.TS)
+
+		fmt.Fprintf(out, "%-2d %-8s  %-12s  %-6s  %-24s  %-6s  %s\n",
+			i+1, op, truncatedID, kind, name, sizeStr, created)
+	}
 }
 
 // blobPath computes the filesystem path for a blob given thread directory and BlobRef.
@@ -385,6 +421,7 @@ func displayFull(out io.Writer, t *task.Task, attachments []AttachmentEvent) {
 	if len(attachments) == 0 {
 		fmt.Fprintln(out, "(no attachments)")
 	} else {
-		displayAttachmentsTable(out, attachments)
+		// Full view shows all events (history), not just current attachments
+		displayAttachmentsHistory(out, attachments)
 	}
 }
