@@ -271,6 +271,33 @@ func Run(argv []string, cfg Config) int {
 }
 
 func usage(app string) string {
+	cmds := getAllCommands()
+
+	// Preserve specific ordering: init first, help last, others in registration order
+	// Build ordered list manually to maintain desired output
+	orderedNames := []string{"init", "add", "list", "show", "describe", "update", "done", "archive", "reopen", "remove", "reindex", "path", "attach"}
+
+	var cmdLines []string
+	seen := make(map[string]bool)
+
+	// Add commands in desired order
+	for _, name := range orderedNames {
+		if info := getCommand(name); info != nil {
+			cmdLines = append(cmdLines, fmt.Sprintf("  %-10s  %s", info.Name, info.Description))
+			seen[name] = true
+		}
+	}
+
+	// Add any remaining commands (shouldn't happen, but be safe)
+	for _, cmd := range cmds {
+		if !seen[cmd.Name] {
+			cmdLines = append(cmdLines, fmt.Sprintf("  %-10s  %s", cmd.Name, cmd.Description))
+		}
+	}
+
+	// Add help command (special case, not in registry)
+	cmdLines = append(cmdLines, "  help      Help for a command")
+
 	return fmt.Sprintf(`%s: a local-first task tracker
 
 Usage:
@@ -283,25 +310,11 @@ Global flags:
       --debug          debug output
 
 Commands:
-  init      Initialize the workspace
-  add       Add a new task
-  list      List tasks
-  show      Show details for a single task
-  describe  Edit a task description in $EDITOR (later)
-  update    Update fields on one or more tasks
-  done      Mark one or more tasks done
-  archive   Archive one or more tasks
-  reopen    Reopen one or more tasks (change from inactive to active)
-  remove    Remove one or more tasks (hard delete; requires --force)
-
-  reindex   Reassign short IDs for active tasks
-  path      Print filesystem path for a thread directory
-  attach    Attach an inline note to a thread
-  help      Help for a command
+%s
 
 Run:
   %s help <command>
-`, app, app, app)
+`, app, app, strings.Join(cmdLines, "\n"), app)
 }
 
 // Usage functions extracted from commandUsage() switch
