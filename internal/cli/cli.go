@@ -245,99 +245,29 @@ func Run(argv []string, cfg Config) int {
 		}
 	}
 
-	switch cmd {
-	case "help":
+	// Handle special case: help command
+	if cmd == "help" {
 		if len(args) == 0 {
 			fmt.Fprintln(cfg.Err, usage(cfg.AppName))
 			return 0
 		}
 		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, args[0]))
 		return 0
+	}
 
-	case "init":
-		return commands.RunInit(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "add":
-		return commands.RunAdd(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "list":
-		return commands.RunList(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "done":
-		return commands.RunDone(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "remove":
-		return commands.RunRemove(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "archive":
-		return commands.RunArchive(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "reopen":
-		return commands.RunReopen(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "reindex":
-		return commands.RunReindex(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "describe":
-		return commands.RunDescribe(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "show":
-		return commands.RunShow(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "update":
-		return commands.RunUpdate(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "path":
-		return commands.RunPath(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-	case "attach":
-		return commands.RunAttach(args, commands.CommandContext{
-			AppName: cfg.AppName,
-			Out:     cfg.Out,
-			Err:     cfg.Err,
-		})
-
-	default:
+	// Look up command in registry and dispatch
+	info := getCommand(cmd)
+	if info == nil {
 		fmt.Fprintf(cfg.Err, "unknown command: %q\n\n", cmd)
 		fmt.Fprintln(cfg.Err, usage(cfg.AppName))
 		return 2
 	}
+
+	return info.Runner(args, commands.CommandContext{
+		AppName: cfg.AppName,
+		Out:     cfg.Out,
+		Err:     cfg.Err,
+	})
 }
 
 func usage(app string) string {
