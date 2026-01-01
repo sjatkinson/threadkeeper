@@ -13,26 +13,26 @@ func RunPath(args []string, ctx CommandContext) int {
 	fs := flag.NewFlagSet(ctx.AppName+" path", flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
-		fmt.Fprintln(ctx.Err, pathUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err, pathUsage(ctx.AppName))
 	}
 
 	var path string
 	fs.StringVar(&path, "path", "", "custom workspace path")
 
 	if err := fs.Parse(args); err != nil {
-		fmt.Fprintln(ctx.Err)
-		fmt.Fprintln(ctx.Err, pathUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err)
+		_, _ = fmt.Fprintln(ctx.Err, pathUsage(ctx.AppName))
 		return 2
 	}
 
 	threadIDs := fs.Args()
 	if len(threadIDs) == 0 {
-		fmt.Fprintf(ctx.Err, "Error: missing argument: thread ID required\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: missing argument: thread ID required\n")
 		return 2
 	}
 
 	if len(threadIDs) > 1 {
-		fmt.Fprintf(ctx.Err, "Error: too many arguments (expected one thread ID)\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: too many arguments (expected one thread ID)\n")
 		return 2
 	}
 
@@ -41,12 +41,12 @@ func RunPath(args []string, ctx CommandContext) int {
 	// Get paths and verify threads directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if _, err := os.Stat(paths.ThreadsDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
@@ -54,7 +54,7 @@ func RunPath(args []string, ctx CommandContext) int {
 	st := store.NewFileStore(paths.ThreadsDir)
 	t, err := st.ResolveID(threadID)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
@@ -62,7 +62,7 @@ func RunPath(args []string, ctx CommandContext) int {
 	threadPath := store.ThreadPath(paths.ThreadsDir, t.ID)
 
 	// Print only the path, followed by a newline (no extra text)
-	fmt.Fprintf(ctx.Out, "%s\n", threadPath)
+	_, _ = fmt.Fprintf(ctx.Out, "%s\n", threadPath)
 
 	return 0
 }

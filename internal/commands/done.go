@@ -15,33 +15,33 @@ func RunDone(args []string, ctx CommandContext) int {
 	fs := flag.NewFlagSet(ctx.AppName+" done", flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
-		fmt.Fprintln(ctx.Err, doneUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err, doneUsage(ctx.AppName))
 	}
 
 	var path string
 	fs.StringVar(&path, "path", "", "custom workspace path")
 
 	if err := fs.Parse(args); err != nil {
-		fmt.Fprintln(ctx.Err)
-		fmt.Fprintln(ctx.Err, doneUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err)
+		_, _ = fmt.Fprintln(ctx.Err, doneUsage(ctx.AppName))
 		return 2
 	}
 
 	ids := fs.Args()
 	if len(ids) == 0 {
-		fmt.Fprintf(ctx.Err, "Error: missing argument: task ID required\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: missing argument: task ID required\n")
 		return 2
 	}
 
 	// Get paths and verify tasks directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if _, err := os.Stat(paths.ThreadsDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
@@ -51,7 +51,7 @@ func RunDone(args []string, ctx CommandContext) int {
 	for _, idStr := range ids {
 		t, err := st.ResolveID(idStr)
 		if err != nil {
-			fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 			return 1
 		}
 		tasks = append(tasks, t)
@@ -72,11 +72,11 @@ func RunDone(args []string, ctx CommandContext) int {
 		t.ShortID = nil
 
 		if err := st.Save(t); err != nil {
-			fmt.Fprintf(ctx.Err, "Error: failed to save task %s: %v\n", t.ID, err)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: failed to save task %s: %v\n", t.ID, err)
 			return 1
 		}
 
-		fmt.Fprintf(ctx.Out, "Marked task %s (%s) as done\n", sidStr, t.ID)
+		_, _ = fmt.Fprintf(ctx.Out, "Marked task %s (%s) as done\n", sidStr, t.ID)
 	}
 
 	return 0

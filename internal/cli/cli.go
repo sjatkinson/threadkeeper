@@ -188,22 +188,22 @@ func Run(argv []string, cfg Config) int {
 	global.BoolVar(&cfg.Verbose, "verbose", false, "verbose output")
 	global.BoolVar(&cfg.Debug, "debug", false, "debug output")
 
-	global.Usage = func() { fmt.Fprintln(cfg.Err, usage(cfg.AppName)) }
+	global.Usage = func() { _, _ = fmt.Fprintln(cfg.Err, usage(cfg.AppName)) }
 
 	if err := global.Parse(argv); err != nil {
-		fmt.Fprintln(cfg.Err)
-		fmt.Fprintln(cfg.Err, usage(cfg.AppName))
+		_, _ = fmt.Fprintln(cfg.Err)
+		_, _ = fmt.Fprintln(cfg.Err, usage(cfg.AppName))
 		return 2
 	}
 
 	if flgVersion {
-		fmt.Fprintf(cfg.Out, "%s %s\n", cfg.AppName, cfg.Version)
+		_, _ = fmt.Fprintf(cfg.Out, "%s %s\n", cfg.AppName, cfg.Version)
 		return 0
 	}
 
 	rest := global.Args()
 	if flgHelp {
-		fmt.Fprintln(cfg.Err, usage(cfg.AppName))
+		_, _ = fmt.Fprintln(cfg.Err, usage(cfg.AppName))
 		return 0
 	}
 
@@ -223,7 +223,7 @@ func Run(argv []string, cfg Config) int {
 			}
 		}
 		// No workspace exists, show usage
-		fmt.Fprintln(cfg.Err, usage(cfg.AppName))
+		_, _ = fmt.Fprintln(cfg.Err, usage(cfg.AppName))
 		return 0
 	}
 
@@ -235,7 +235,7 @@ func Run(argv []string, cfg Config) int {
 	if err != nil {
 		// Log warning but continue (don't fail on malformed config)
 		if cfg.Verbose || cfg.Debug {
-			fmt.Fprintf(cfg.Err, "Warning: failed to load aliases: %v\n", err)
+			_, _ = fmt.Fprintf(cfg.Err, "Warning: failed to load aliases: %v\n", err)
 		}
 		rawAliases = make(config.Aliases)
 	}
@@ -254,18 +254,18 @@ func Run(argv []string, cfg Config) int {
 	// Handle special case: help command
 	if cmd == "help" {
 		if len(args) == 0 {
-			fmt.Fprintln(cfg.Err, usage(cfg.AppName))
+			_, _ = fmt.Fprintln(cfg.Err, usage(cfg.AppName))
 			return 0
 		}
-		fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, args[0]))
+		_, _ = fmt.Fprintln(cfg.Err, commandUsage(cfg.AppName, args[0]))
 		return 0
 	}
 
 	// Look up command in registry and dispatch
 	info := getCommand(cmd)
 	if info == nil {
-		fmt.Fprintf(cfg.Err, "unknown command: %q\n\n", cmd)
-		fmt.Fprintln(cfg.Err, usage(cfg.AppName))
+		_, _ = fmt.Fprintf(cfg.Err, "unknown command: %q\n\n", cmd)
+		_, _ = fmt.Fprintln(cfg.Err, usage(cfg.AppName))
 		return 2
 	}
 
@@ -510,7 +510,7 @@ func validateAliases(raw config.Aliases, verbose bool, errOut io.Writer) config.
 		// Skip aliases that conflict with built-in commands
 		if getCommand(alias) != nil {
 			if verbose {
-				fmt.Fprintf(errOut, "Warning: alias %q conflicts with built-in command, ignoring\n", alias)
+				_, _ = fmt.Fprintf(errOut, "Warning: alias %q conflicts with built-in command, ignoring\n", alias)
 			}
 			continue
 		}
@@ -520,13 +520,13 @@ func validateAliases(raw config.Aliases, verbose bool, errOut io.Writer) config.
 			// Check if target is another alias (recursion)
 			if _, isAlias := raw[target]; isAlias {
 				if verbose {
-					fmt.Fprintf(errOut, "Warning: alias %q points to another alias %q (recursion not allowed), ignoring\n", alias, target)
+					_, _ = fmt.Fprintf(errOut, "Warning: alias %q points to another alias %q (recursion not allowed), ignoring\n", alias, target)
 				}
 				continue
 			}
 			// Target is not a built-in and not an alias - invalid
 			if verbose {
-				fmt.Fprintf(errOut, "Warning: alias %q points to non-existent command %q, ignoring\n", alias, target)
+				_, _ = fmt.Fprintf(errOut, "Warning: alias %q points to non-existent command %q, ignoring\n", alias, target)
 			}
 			continue
 		}

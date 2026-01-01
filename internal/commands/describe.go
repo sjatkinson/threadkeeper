@@ -16,21 +16,21 @@ func RunDescribe(args []string, ctx CommandContext) int {
 	fs := flag.NewFlagSet(ctx.AppName+" describe", flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
-		fmt.Fprintln(ctx.Err, describeUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err, describeUsage(ctx.AppName))
 	}
 
 	var path string
 	fs.StringVar(&path, "path", "", "custom workspace path")
 
 	if err := fs.Parse(args); err != nil {
-		fmt.Fprintln(ctx.Err)
-		fmt.Fprintln(ctx.Err, describeUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err)
+		_, _ = fmt.Fprintln(ctx.Err, describeUsage(ctx.AppName))
 		return 2
 	}
 
 	rest := fs.Args()
 	if len(rest) != 1 {
-		fmt.Fprintf(ctx.Err, "Error: missing argument: task ID required\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: missing argument: task ID required\n")
 		return 2
 	}
 
@@ -39,12 +39,12 @@ func RunDescribe(args []string, ctx CommandContext) int {
 	// Get paths and verify tasks directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if _, err := os.Stat(paths.ThreadsDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
@@ -52,7 +52,7 @@ func RunDescribe(args []string, ctx CommandContext) int {
 	st := store.NewFileStore(paths.ThreadsDir)
 	t, err := st.ResolveID(idStr)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
@@ -65,7 +65,7 @@ func RunDescribe(args []string, ctx CommandContext) int {
 	// Create temporary file
 	tmpFile, err := os.CreateTemp("", "tk-describe-*.txt")
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to create temporary file: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to create temporary file: %v\n", err)
 		return 1
 	}
 	tmpPath := tmpFile.Name()
@@ -74,12 +74,12 @@ func RunDescribe(args []string, ctx CommandContext) int {
 	// Write current description to temp file
 	if currentDesc != "" {
 		if _, err := tmpFile.WriteString(currentDesc); err != nil {
-			fmt.Fprintf(ctx.Err, "Error: failed to write to temporary file: %v\n", err)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: failed to write to temporary file: %v\n", err)
 			return 1
 		}
 	}
 	if err := tmpFile.Close(); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to close temporary file: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to close temporary file: %v\n", err)
 		return 1
 	}
 
@@ -98,17 +98,17 @@ func RunDescribe(args []string, ctx CommandContext) int {
 
 	if err := cmd.Run(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			fmt.Fprintf(ctx.Err, "Error: editor exited with code %d; description unchanged.\n", exitErr.ExitCode())
+			_, _ = fmt.Fprintf(ctx.Err, "Error: editor exited with code %d; description unchanged.\n", exitErr.ExitCode())
 			return 1
 		}
-		fmt.Fprintf(ctx.Err, "Error: failed to run editor: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to run editor: %v\n", err)
 		return 1
 	}
 
 	// Read edited content
 	newText, err := os.ReadFile(tmpPath)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to read edited file: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to read edited file: %v\n", err)
 		return 1
 	}
 
@@ -117,7 +117,7 @@ func RunDescribe(args []string, ctx CommandContext) int {
 
 	// If empty after stripping, leave description unchanged
 	if newTextStripped == "" {
-		fmt.Fprintln(ctx.Out, "Empty description; leaving existing description unchanged.")
+		_, _ = fmt.Fprintln(ctx.Out, "Empty description; leaving existing description unchanged.")
 		return 0
 	}
 
@@ -127,7 +127,7 @@ func RunDescribe(args []string, ctx CommandContext) int {
 
 	// Save task
 	if err := st.Save(t); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to save task: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to save task: %v\n", err)
 		return 1
 	}
 
@@ -136,7 +136,7 @@ func RunDescribe(args []string, ctx CommandContext) int {
 	if t.ShortID != nil {
 		sidStr = fmt.Sprintf("%d", *t.ShortID)
 	}
-	fmt.Fprintf(ctx.Out, "Updated description for task %s (%s)\n", sidStr, t.ID)
+	_, _ = fmt.Fprintf(ctx.Out, "Updated description for task %s (%s)\n", sidStr, t.ID)
 
 	return 0
 }

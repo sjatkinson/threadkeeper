@@ -235,25 +235,25 @@ func RunAttach(args []string, ctx CommandContext) int {
 	fs := flag.NewFlagSet(ctx.AppName+" attach", flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
-		fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
 	}
 
 	var path string
 	fs.StringVar(&path, "path", "", "custom workspace path")
 
 	if err := fs.Parse(args); err != nil {
-		fmt.Fprintln(ctx.Err)
-		fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err)
+		_, _ = fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
 		return 2
 	}
 
 	rest := fs.Args()
 	if len(rest) == 0 {
-		fmt.Fprintf(ctx.Err, "Error: missing argument: thread ID required\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: missing argument: thread ID required\n")
 		return 2
 	}
 	if len(rest) > 1 {
-		fmt.Fprintf(ctx.Err, "Error: too many arguments (expected one thread ID)\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: too many arguments (expected one thread ID)\n")
 		return 2
 	}
 
@@ -262,12 +262,12 @@ func RunAttach(args []string, ctx CommandContext) int {
 	// Get paths and verify threads directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if _, err := os.Stat(paths.ThreadsDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
@@ -275,7 +275,7 @@ func RunAttach(args []string, ctx CommandContext) int {
 	st := store.NewFileStore(paths.ThreadsDir)
 	t, err := st.ResolveID(threadIDStr)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
@@ -285,7 +285,7 @@ func RunAttach(args []string, ctx CommandContext) int {
 	// Verify thread directory and thread.json exist
 	threadJSONPath := store.ThreadFilePath(paths.ThreadsDir, t.ID)
 	if _, err := os.Stat(threadJSONPath); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: thread %s not found\n", t.ID)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: thread %s not found\n", t.ID)
 		return 1
 	}
 
@@ -293,24 +293,24 @@ func RunAttach(args []string, ctx CommandContext) int {
 	content, err := captureEditorContent()
 	if err != nil {
 		if err.Error() == "note content is empty; attachment cancelled" {
-			fmt.Fprintf(ctx.Err, "Note content is empty; attachment cancelled\n")
+			_, _ = fmt.Fprintf(ctx.Err, "Note content is empty; attachment cancelled\n")
 			return 0 // Not an error, user cancelled
 		}
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	// Store blob
 	hashHex, size, err := storeBlob(threadDir, content)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to store blob: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to store blob: %v\n", err)
 		return 1
 	}
 
 	// Generate attachment ID
 	attID, err := task.GenerateID()
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to generate attachment ID: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to generate attachment ID: %v\n", err)
 		return 1
 	}
 
@@ -337,18 +337,18 @@ func RunAttach(args []string, ctx CommandContext) int {
 
 	// Append to attachments.jsonl
 	if err := appendAttachmentEvent(threadDir, event); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to append attachment event: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to append attachment event: %v\n", err)
 		return 1
 	}
 
 	// Update thread.json to reference attachments.jsonl
 	if err := updateThreadAttachmentsLog(paths.ThreadsDir, t.ID); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to update thread.json: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to update thread.json: %v\n", err)
 		return 1
 	}
 
 	// Print success message
-	fmt.Fprintf(ctx.Out, "Attached note %s to %s (sha256:%s)\n", attID, t.ID, hashHex)
+	_, _ = fmt.Fprintf(ctx.Out, "Attached note %s to %s (sha256:%s)\n", attID, t.ID, hashHex)
 
 	return 0
 }

@@ -77,7 +77,7 @@ func RunOpen(args []string, ctx CommandContext) int {
 	fs := flag.NewFlagSet(ctx.AppName+" open", flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
-		fmt.Fprintln(ctx.Err, openUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err, openUsage(ctx.AppName))
 	}
 
 	var (
@@ -110,14 +110,14 @@ func RunOpen(args []string, ctx CommandContext) int {
 	}
 
 	if err := fs.Parse(processedArgs); err != nil {
-		fmt.Fprintln(ctx.Err)
-		fmt.Fprintln(ctx.Err, openUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err)
+		_, _ = fmt.Fprintln(ctx.Err, openUsage(ctx.AppName))
 		return 2
 	}
 
 	rest := fs.Args()
 	if len(rest) != 1 {
-		fmt.Fprintf(ctx.Err, "Error: missing argument: thread ID required\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: missing argument: thread ID required\n")
 		return 2
 	}
 
@@ -125,24 +125,24 @@ func RunOpen(args []string, ctx CommandContext) int {
 
 	// Validate that either --att or --att-id is provided
 	if attIndex == 0 && attID == "" {
-		fmt.Fprintf(ctx.Err, "Error: must specify either --att <index> or --att-id <id>\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: must specify either --att <index> or --att-id <id>\n")
 		return 2
 	}
 
 	if attIndex != 0 && attID != "" {
-		fmt.Fprintf(ctx.Err, "Error: cannot specify both --att and --att-id\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: cannot specify both --att and --att-id\n")
 		return 2
 	}
 
 	// Get paths and verify threads directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if _, err := os.Stat(paths.ThreadsDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
@@ -150,7 +150,7 @@ func RunOpen(args []string, ctx CommandContext) int {
 	st := store.NewFileStore(paths.ThreadsDir)
 	t, err := st.ResolveID(threadIDStr)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
@@ -161,7 +161,7 @@ func RunOpen(args []string, ctx CommandContext) int {
 	attachments, err := loadAttachments(threadDir)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			fmt.Fprintf(ctx.Err, "Warning: failed to load attachments: %v\n", err)
+			_, _ = fmt.Fprintf(ctx.Err, "Warning: failed to load attachments: %v\n", err)
 		}
 		attachments = []AttachmentEvent{}
 	}
@@ -180,17 +180,17 @@ func RunOpen(args []string, ctx CommandContext) int {
 			}
 		}
 		if target == nil {
-			fmt.Fprintf(ctx.Err, "Error: attachment with ID %q not found\n", attID)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: attachment with ID %q not found\n", attID)
 			return 1
 		}
 	} else {
 		// Find by index (1-based)
 		if attIndex < 1 {
-			fmt.Fprintf(ctx.Err, "Error: attachment index must be >= 1\n")
+			_, _ = fmt.Fprintf(ctx.Err, "Error: attachment index must be >= 1\n")
 			return 2
 		}
 		if attIndex > len(currentAtts) {
-			fmt.Fprintf(ctx.Err, "Error: attachment index %d out of range (max: %d)\n", attIndex, len(currentAtts))
+			_, _ = fmt.Fprintf(ctx.Err, "Error: attachment index %d out of range (max: %d)\n", attIndex, len(currentAtts))
 			return 1
 		}
 		target = &currentAtts[attIndex-1]
@@ -199,35 +199,35 @@ func RunOpen(args []string, ctx CommandContext) int {
 	// Resolve blob path
 	blobPath := blobPath(threadDir, target.Att.Blob)
 	if blobPath == "" {
-		fmt.Fprintf(ctx.Err, "Error: unsupported blob algorithm %q\n", target.Att.Blob.Algo)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: unsupported blob algorithm %q\n", target.Att.Blob.Algo)
 		return 1
 	}
 
 	// Check if blob file exists
 	if _, err := os.Stat(blobPath); err != nil {
 		if os.IsNotExist(err) {
-			fmt.Fprintf(ctx.Err, "Error: blob file not found at %s\n", blobPath)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: blob file not found at %s\n", blobPath)
 			return 1
 		}
-		fmt.Fprintf(ctx.Err, "Error: failed to access blob file: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to access blob file: %v\n", err)
 		return 1
 	}
 
 	// Print path or open file
 	if printPath {
-		fmt.Fprintln(ctx.Out, blobPath)
+		_, _ = fmt.Fprintln(ctx.Out, blobPath)
 		return 0
 	}
 
 	// Open file using platform-specific opener
 	opener, err := newFileOpener()
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if err := opener.OpenFile(blobPath); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to open file: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to open file: %v\n", err)
 		return 1
 	}
 

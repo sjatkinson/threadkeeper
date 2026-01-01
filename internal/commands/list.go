@@ -16,7 +16,7 @@ func RunList(args []string, ctx CommandContext) int {
 	fs := flag.NewFlagSet(ctx.AppName+" list", flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
-		fmt.Fprintln(ctx.Err, listUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err, listUsage(ctx.AppName))
 	}
 
 	var (
@@ -39,26 +39,26 @@ func RunList(args []string, ctx CommandContext) int {
 	fs.StringVar(&tag, "tag", "", "filter by tag")
 
 	if err := fs.Parse(args); err != nil {
-		fmt.Fprintln(ctx.Err)
-		fmt.Fprintln(ctx.Err, listUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err)
+		_, _ = fmt.Fprintln(ctx.Err, listUsage(ctx.AppName))
 		return 2
 	}
 
 	if len(fs.Args()) != 0 {
-		fmt.Fprintf(ctx.Err, "Error: unexpected arguments\n")
-		fmt.Fprintln(ctx.Err, listUsage(ctx.AppName))
+		_, _ = fmt.Fprintf(ctx.Err, "Error: unexpected arguments\n")
+		_, _ = fmt.Fprintln(ctx.Err, listUsage(ctx.AppName))
 		return 2
 	}
 
 	// Get paths and verify tasks directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if _, err := os.Stat(paths.ThreadsDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
@@ -66,7 +66,7 @@ func RunList(args []string, ctx CommandContext) int {
 	st := store.NewFileStore(paths.ThreadsDir)
 	tasks, err := st.LoadAll()
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
@@ -80,12 +80,12 @@ func RunList(args []string, ctx CommandContext) int {
 	// Reload to get updated tasks with short_ids
 	tasks, err = st.LoadAll()
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if len(tasks) == 0 {
-		fmt.Fprintln(ctx.Out, "No tasks found.")
+		_, _ = fmt.Fprintln(ctx.Out, "No tasks found.")
 		return 0
 	}
 
@@ -93,7 +93,7 @@ func RunList(args []string, ctx CommandContext) int {
 	filtered := filterTasks(tasks, all, status, project, tag)
 
 	if len(filtered) == 0 {
-		fmt.Fprintln(ctx.Out, "No tasks found.")
+		_, _ = fmt.Fprintln(ctx.Out, "No tasks found.")
 		return 0
 	}
 
@@ -218,6 +218,6 @@ func displayTasks(out io.Writer, tasks []*task.Task) {
 			line += fmt.Sprintf("  [%s]", strings.Join(tagStrs, ","))
 		}
 
-		fmt.Fprintln(out, line)
+		_, _ = fmt.Fprintln(out, line)
 	}
 }

@@ -28,7 +28,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	fs := flag.NewFlagSet(ctx.AppName+" update", flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
-		fmt.Fprintln(ctx.Err, updateUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err, updateUsage(ctx.AppName))
 	}
 
 	var (
@@ -63,8 +63,8 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	}
 
 	if err := fs.Parse(processedArgs); err != nil {
-		fmt.Fprintln(ctx.Err)
-		fmt.Fprintln(ctx.Err, updateUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err)
+		_, _ = fmt.Fprintln(ctx.Err, updateUsage(ctx.AppName))
 		return 2
 	}
 
@@ -85,7 +85,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	}
 
 	if len(ids) == 0 {
-		fmt.Fprintf(ctx.Err, "Error: missing argument: task ID required\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: missing argument: task ID required\n")
 		return 2
 	}
 
@@ -93,19 +93,19 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	hasAddTags := len(addTags) > 0
 	hasRemoveTags := len(removeTags) > 0
 	if title == "" && due == "" && project == "" && !hasAddTags && !hasRemoveTags {
-		fmt.Fprintf(ctx.Err, "Error: nothing to update. Provide --title/--due/--project/--add-tag/--remove-tag or use +tag/-tag shortcuts.\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: nothing to update. Provide --title/--due/--project/--add-tag/--remove-tag or use +tag/-tag shortcuts.\n")
 		return 2
 	}
 
 	// Get paths and verify tasks directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if _, err := os.Stat(paths.ThreadsDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
@@ -115,7 +115,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	for _, idStr := range ids {
 		t, err := st.ResolveID(idStr)
 		if err != nil {
-			fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 			return 1
 		}
 		tasks = append(tasks, t)
@@ -137,14 +137,14 @@ func RunUpdate(args []string, ctx CommandContext) int {
 		// Parse date using locale-aware parser
 		canonical, err := date.ParseDate(due, locale, date.RealClock{}, nil)
 		if err != nil {
-			fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 			return 1
 		}
 
 		// Convert canonical string to time.Time
 		parsed, err := time.Parse("2006-01-02", canonical)
 		if err != nil {
-			fmt.Fprintf(ctx.Err, "Error: failed to parse canonical date: %v\n", err)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: failed to parse canonical date: %v\n", err)
 			return 1
 		}
 		parsed = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.UTC)
@@ -242,7 +242,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 		if changed {
 			t.UpdatedAt = now
 			if err := st.Save(t); err != nil {
-				fmt.Fprintf(ctx.Err, "Error: failed to save task %s: %v\n", t.ID, err)
+				_, _ = fmt.Fprintf(ctx.Err, "Error: failed to save task %s: %v\n", t.ID, err)
 				return 1
 			}
 
@@ -251,7 +251,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 			if t.ShortID != nil {
 				sidStr = fmt.Sprintf("%d", *t.ShortID)
 			}
-			fmt.Fprintf(ctx.Out, "Updated task %s (%s)\n", sidStr, t.ID)
+			_, _ = fmt.Fprintf(ctx.Out, "Updated task %s (%s)\n", sidStr, t.ID)
 		}
 	}
 

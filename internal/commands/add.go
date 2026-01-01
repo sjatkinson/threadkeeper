@@ -27,7 +27,7 @@ func RunAdd(args []string, ctx CommandContext) int {
 	fs := flag.NewFlagSet(ctx.AppName+" add", flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
-		fmt.Fprintln(ctx.Err, addUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err, addUsage(ctx.AppName))
 	}
 
 	var (
@@ -46,13 +46,13 @@ func RunAdd(args []string, ctx CommandContext) int {
 	fs.Var(&tags, "tag", "repeatable tag")
 
 	if err := fs.Parse(args); err != nil {
-		fmt.Fprintln(ctx.Err)
-		fmt.Fprintln(ctx.Err, addUsage(ctx.AppName))
+		_, _ = fmt.Fprintln(ctx.Err)
+		_, _ = fmt.Fprintln(ctx.Err, addUsage(ctx.AppName))
 		return 2
 	}
 
 	if len(fs.Args()) == 0 {
-		fmt.Fprintf(ctx.Err, "Error: missing argument: title required\n")
+		_, _ = fmt.Fprintf(ctx.Err, "Error: missing argument: title required\n")
 		return 2
 	}
 
@@ -61,19 +61,19 @@ func RunAdd(args []string, ctx CommandContext) int {
 	// Get paths and verify tasks directory exists
 	paths, err := config.GetPaths(path)
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
 	}
 
 	if _, err := os.Stat(paths.ThreadsDir); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
 		return 1
 	}
 
 	// Generate task ID
 	taskID, err := task.GenerateID()
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to generate task ID: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to generate task ID: %v\n", err)
 		return 1
 	}
 
@@ -89,14 +89,14 @@ func RunAdd(args []string, ctx CommandContext) int {
 		// Parse date using locale-aware parser
 		canonical, err := date.ParseDate(due, locale, date.RealClock{}, nil)
 		if err != nil {
-			fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 			return 1
 		}
 
 		// Convert canonical string to time.Time
 		parsed, err := time.Parse("2006-01-02", canonical)
 		if err != nil {
-			fmt.Fprintf(ctx.Err, "Error: failed to parse canonical date: %v\n", err)
+			_, _ = fmt.Fprintf(ctx.Err, "Error: failed to parse canonical date: %v\n", err)
 			return 1
 		}
 		parsed = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, time.UTC)
@@ -110,7 +110,7 @@ func RunAdd(args []string, ctx CommandContext) int {
 	st := store.NewFileStore(paths.ThreadsDir)
 	shortID, err := st.GenerateNextShortID()
 	if err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to generate short_id: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to generate short_id: %v\n", err)
 		return 1
 	}
 
@@ -131,12 +131,12 @@ func RunAdd(args []string, ctx CommandContext) int {
 
 	// Save task
 	if err := st.Save(t); err != nil {
-		fmt.Fprintf(ctx.Err, "Error: failed to save task: %v\n", err)
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to save task: %v\n", err)
 		return 1
 	}
 
 	// Output success message
-	fmt.Fprintf(ctx.Out, "Added task %d (%s): %s\n", shortID, taskID, title)
+	_, _ = fmt.Fprintf(ctx.Out, "Added task %d (%s): %s\n", shortID, taskID, title)
 
 	return 0
 }
