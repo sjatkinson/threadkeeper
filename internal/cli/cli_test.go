@@ -138,10 +138,6 @@ func TestUsageIncludesAllCommands(t *testing.T) {
 }
 
 func TestRun_CommandParsing(t *testing.T) {
-	// Save original environment
-	originalWorkspace := os.Getenv("THREADKEEPER_WORKSPACE")
-	defer os.Setenv("THREADKEEPER_WORKSPACE", originalWorkspace)
-
 	tests := []struct {
 		name     string
 		argv     []string
@@ -228,10 +224,6 @@ func TestRun_AliasResolution(t *testing.T) {
 }
 
 func TestRun_DefaultToList(t *testing.T) {
-	// Save original environment
-	originalWorkspace := os.Getenv("THREADKEEPER_WORKSPACE")
-	defer os.Setenv("THREADKEEPER_WORKSPACE", originalWorkspace)
-
 	tests := []struct {
 		name           string
 		argv           []string
@@ -260,7 +252,7 @@ func TestRun_DefaultToList(t *testing.T) {
 			// Create temporary directory for workspace if needed
 			if tt.setupWorkspace {
 				tmpDir := t.TempDir()
-				os.Setenv("THREADKEEPER_WORKSPACE", tmpDir)
+				t.Setenv("THREADKEEPER_WORKSPACE", tmpDir)
 				// Create threads directory to simulate existing workspace
 				os.MkdirAll(tmpDir+"/threads", 0755)
 			} else {
@@ -268,7 +260,7 @@ func TestRun_DefaultToList(t *testing.T) {
 				// This ensures config.GetPaths("") will either fail or return a path
 				// where threads directory doesn't exist
 				tmpDir := t.TempDir()
-				os.Setenv("THREADKEEPER_WORKSPACE", tmpDir)
+				t.Setenv("THREADKEEPER_WORKSPACE", tmpDir)
 				// Don't create threads directory - workspace should not exist
 			}
 
