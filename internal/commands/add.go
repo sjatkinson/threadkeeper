@@ -1,12 +1,11 @@
 package commands
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"time"
-
-	flag "github.com/spf13/pflag"
 
 	"github.com/sjatkinson/threadkeeper/internal/config"
 	"github.com/sjatkinson/threadkeeper/internal/date"
@@ -46,6 +45,10 @@ func RunAdd(args []string, ctx CommandContext) int {
 	fs.Var(&tags, "tag", "repeatable tag")
 
 	if err := fs.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			fs.Usage()
+			return 0
+		}
 		_, _ = fmt.Fprintln(ctx.Err)
 		_, _ = fmt.Fprintln(ctx.Err, addUsage(ctx.AppName))
 		return 2

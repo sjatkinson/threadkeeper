@@ -1,13 +1,12 @@
 package commands
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 	"time"
-
-	flag "github.com/spf13/pflag"
 
 	"github.com/sjatkinson/threadkeeper/internal/config"
 	"github.com/sjatkinson/threadkeeper/internal/date"
@@ -63,6 +62,10 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	}
 
 	if err := fs.Parse(processedArgs); err != nil {
+		if err == flag.ErrHelp {
+			fs.Usage()
+			return 0
+		}
 		_, _ = fmt.Fprintln(ctx.Err)
 		_, _ = fmt.Fprintln(ctx.Err, updateUsage(ctx.AppName))
 		return 2
