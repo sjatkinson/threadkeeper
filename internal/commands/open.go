@@ -196,8 +196,41 @@ func RunOpen(args []string, ctx CommandContext) int {
 		target = &currentAtts[attIndex-1]
 	}
 
-	// Resolve blob path
-	blobPath := blobPath(threadDir, target.Att.Blob)
+	// Handle link attachments (open URL)
+	if target.Att.Kind == "link" {
+		if target.Att.URL == "" {
+			_, _ = fmt.Fprintf(ctx.Err, "Error: link attachment has no URL\n")
+			return 1
+		}
+
+		// Print URL or open it
+		if printPath {
+			_, _ = fmt.Fprintln(ctx.Out, target.Att.URL)
+			return 0
+		}
+
+		// Open URL using platform-specific opener
+		opener, err := newFileOpener()
+		if err != nil {
+			_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+			return 1
+		}
+
+		if err := opener.OpenURL(target.Att.URL); err != nil {
+			_, _ = fmt.Fprintf(ctx.Err, "Error: failed to open URL: %v\n", err)
+			return 1
+		}
+
+		return 0
+	}
+
+	// Handle note attachments (open blob file)
+	if target.Att.Blob == nil {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: note attachment has no blob reference\n")
+		return 1
+	}
+
+	blobPath := blobPath(threadDir, *target.Att.Blob)
 	if blobPath == "" {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: unsupported blob algorithm %q\n", target.Att.Blob.Algo)
 		return 1

@@ -26,12 +26,14 @@ type AttachmentEvent struct {
 
 // Attachment represents attachment metadata
 type Attachment struct {
-	AttID     string  `json:"att_id"`
-	Kind      string  `json:"kind"`
-	Name      string  `json:"name"`
-	MediaType string  `json:"media_type"`
-	Blob      BlobRef `json:"blob"`
-	Size      int64   `json:"size"`
+	AttID     string   `json:"att_id"`
+	Kind      string   `json:"kind"` // "note" or "link"
+	Name      string   `json:"name"`
+	MediaType string   `json:"media_type,omitempty"` // Only for notes
+	Blob      *BlobRef `json:"blob,omitempty"`       // Only for notes
+	Size      int64    `json:"size,omitempty"`       // Only for notes
+	URL       string   `json:"url,omitempty"`        // Only for links
+	Label     string   `json:"label,omitempty"`      // Only for links (optional)
 }
 
 // BlobRef references a content-addressed blob
@@ -232,32 +234,105 @@ func updateThreadAttachmentsLog(threadsDir, threadID string) error {
 }
 
 func RunAttach(args []string, ctx CommandContext) int {
-	fs := flag.NewFlagSet(ctx.AppName+" attach", flag.ContinueOnError)
+	// Check for old positional syntax for better error messages
+	// Old syntax: tk attach note <id> or tk attach link <id> <url>
+	if len(args) >= 2 && (args[0] == "note" || args[0] == "link") {
+		// Check if second arg looks like a positional (not a flag)
+		if len(args) >= 2 && !strings.HasPrefix(args[1], "-") {
+			// Old syntax detected
+			if args[0] == "note" {
+				_, _ = fmt.Fprintf(ctx.Err, "Error: attach now requires --id flag. Try: %s attach note --id %s\n", ctx.AppName, args[1])
+				return 2
+			} else {
+				// link
+				if len(args) >= 3 && !strings.HasPrefix(args[2], "-") {
+					_, _ = fmt.Fprintf(ctx.Err, "Error: attach link now requires --id and --url flags. Try: %s attach link --id %s --url %s\n", ctx.AppName, args[1], args[2])
+				} else {
+					_, _ = fmt.Fprintf(ctx.Err, "Error: attach link now requires --id and --url flags. Try: %s attach link --id %s --url <url>\n", ctx.AppName, args[1])
+				}
+				return 2
+			}
+		}
+	}
+
+	// Parse flags for the subcommand (note or link)
+	if len(args) == 0 {
+		_, _ = fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
+		return 2
+	}
+
+	attachType := args[0]
+	if attachType != "note" && attachType != "link" {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: invalid attachment type %q (must be 'note' or 'link')\n", attachType)
+		_, _ = fmt.Fprintf(ctx.Err, "\n")
+		_, _ = fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
+		return 2
+	}
+
+	// Create flag set for the subcommand
+	subArgs := args[1:]
+	fs := flag.NewFlagSet(ctx.AppName+" attach "+attachType, flag.ContinueOnError)
 	fs.SetOutput(ctx.Err)
 	fs.Usage = func() {
 		_, _ = fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
 	}
 
-	var path string
+	var (
+		path  string
+		id    string
+		url   string
+		label string
+	)
 	fs.StringVar(&path, "path", "", "custom workspace path")
+	fs.StringVar(&id, "id", "", "thread handle or canonical id")
+	if attachType == "link" {
+		fs.StringVar(&url, "url", "", "URL to attach")
+		fs.StringVar(&label, "label", "", "label for link")
+	}
 
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(subArgs); err != nil {
 		_, _ = fmt.Fprintln(ctx.Err)
 		_, _ = fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
 		return 2
 	}
 
+	// Check for positional arguments (old syntax)
 	rest := fs.Args()
-	if len(rest) == 0 {
-		_, _ = fmt.Fprintf(ctx.Err, "Error: missing argument: thread ID required\n")
-		return 2
-	}
-	if len(rest) > 1 {
-		_, _ = fmt.Fprintf(ctx.Err, "Error: too many arguments (expected one thread ID)\n")
+	if len(rest) > 0 {
+		if attachType == "note" {
+			_, _ = fmt.Fprintf(ctx.Err, "Error: attach now requires --id flag. Try: %s attach note --id %s\n", ctx.AppName, rest[0])
+		} else {
+			if len(rest) >= 2 {
+				_, _ = fmt.Fprintf(ctx.Err, "Error: attach link now requires --id and --url flags. Try: %s attach link --id %s --url %s\n", ctx.AppName, rest[0], rest[1])
+			} else if len(rest) == 1 {
+				_, _ = fmt.Fprintf(ctx.Err, "Error: attach link now requires --id and --url flags. Try: %s attach link --id %s --url <url>\n", ctx.AppName, rest[0])
+			}
+		}
 		return 2
 	}
 
-	threadIDStr := rest[0]
+	// Validate required flags
+	if id == "" {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: --id is required\n")
+		_, _ = fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
+		return 2
+	}
+
+	if attachType == "note" {
+		return runAttachNote(id, path, ctx)
+	}
+
+	// Link attachment
+	if url == "" {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: --url is required for link attachments\n")
+		_, _ = fmt.Fprintln(ctx.Err, attachUsage(ctx.AppName))
+		return 2
+	}
+
+	return runAttachLink(id, url, label, path, ctx)
+}
+
+func runAttachNote(threadIDStr, path string, ctx CommandContext) int {
 
 	// Get paths and verify threads directory exists
 	paths, err := config.GetPaths(path)
@@ -327,7 +402,7 @@ func RunAttach(args []string, ctx CommandContext) int {
 			Kind:      "note",
 			Name:      name,
 			MediaType: "text/markdown",
-			Blob: BlobRef{
+			Blob: &BlobRef{
 				Algo: "sha256",
 				Hash: hashHex,
 			},
@@ -353,20 +428,114 @@ func RunAttach(args []string, ctx CommandContext) int {
 	return 0
 }
 
+func runAttachLink(threadIDStr, url, label, path string, ctx CommandContext) int {
+	// Get paths and verify threads directory exists
+	paths, err := config.GetPaths(path)
+	if err != nil {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		return 1
+	}
+
+	if _, err := os.Stat(paths.ThreadsDir); err != nil {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: threads directory does not exist at %s. Run '%s init' first.\n", paths.ThreadsDir, ctx.AppName)
+		return 1
+	}
+
+	// Resolve thread ID
+	st := store.NewFileStore(paths.ThreadsDir)
+	t, err := st.ResolveID(threadIDStr)
+	if err != nil {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
+		return 1
+	}
+
+	// Get thread directory path
+	threadDir := store.ThreadPath(paths.ThreadsDir, t.ID)
+
+	// Verify thread directory and thread.json exist
+	threadJSONPath := store.ThreadFilePath(paths.ThreadsDir, t.ID)
+	if _, err := os.Stat(threadJSONPath); err != nil {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: thread %s not found\n", t.ID)
+		return 1
+	}
+
+	// Generate attachment ID
+	attID, err := task.GenerateID()
+	if err != nil {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to generate attachment ID: %v\n", err)
+		return 1
+	}
+
+	// Generate default name from URL or label
+	now := time.Now().UTC()
+	var name string
+	if label != "" {
+		name = label
+	} else {
+		// Use URL hostname as name, or fallback to link-YYYYMMDD-HHMMSS
+		name = fmt.Sprintf("link-%s", now.Format("20060102-150405"))
+	}
+
+	// Create attachment event
+	event := AttachmentEvent{
+		Op: "add",
+		TS: now.Format(time.RFC3339),
+		Att: Attachment{
+			AttID: attID,
+			Kind:  "link",
+			Name:  name,
+			URL:   url,
+			Label: label,
+		},
+	}
+
+	// Append to attachments.jsonl
+	if err := appendAttachmentEvent(threadDir, event); err != nil {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to append attachment event: %v\n", err)
+		return 1
+	}
+
+	// Update thread.json to reference attachments.jsonl
+	if err := updateThreadAttachmentsLog(paths.ThreadsDir, t.ID); err != nil {
+		_, _ = fmt.Fprintf(ctx.Err, "Error: failed to update thread.json: %v\n", err)
+		return 1
+	}
+
+	// Print success message
+	if label != "" {
+		_, _ = fmt.Fprintf(ctx.Out, "Attached link %s to %s: [%s] %s\n", attID, t.ID, label, url)
+	} else {
+		_, _ = fmt.Fprintf(ctx.Out, "Attached link %s to %s: %s\n", attID, t.ID, url)
+	}
+
+	return 0
+}
+
 func attachUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s attach [--path <dir>] <thread-id>
+  %s attach [--path <dir>] note --id <thread-id>
+  %s attach [--path <dir>] link --id <thread-id> --url <url> [--label <label>]
 
-Attach an inline note to a thread. Opens your editor to capture note content.
+Attach context to a thread.
 
-The note is stored as a content-addressed blob and recorded in attachments.jsonl.
+Types:
+  note   Open editor, store content-addressed blob, record in attachments.jsonl.
+  link   Record URL (and optional label) in attachments.jsonl.
 
 Flags:
-  --path <dir>   custom workspace path
+  --path <dir>    custom workspace path
+  --id <id>       thread handle or canonical id
+  --url <url>     URL to attach [link only]
+  --label <text>  label for link (pr, slack, jira, doc, etc.) [link only]
 
 Environment variables:
-  TK_EDITOR      editor to use (defaults to $EDITOR, then vi)
-  EDITOR         editor to use (if TK_EDITOR not set)
+  TK_EDITOR       editor to use (defaults to $EDITOR, then vi) [note only]
+  EDITOR          editor to use (if TK_EDITOR not set) [note only]
 
-`, app)
+Examples:
+  %s attach note --id 1
+  %s attach link --id 1 --url https://example.com/pr/123 --label pr
+  %s attach link --id 1 --url https://slack.com/archives/C123
+
+`, app, app, app, app, app)
 }

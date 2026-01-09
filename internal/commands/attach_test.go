@@ -75,7 +75,7 @@ func TestAppendAttachmentEvent(t *testing.T) {
 			Kind:      "note",
 			Name:      "test-note",
 			MediaType: "text/markdown",
-			Blob: BlobRef{
+			Blob: &BlobRef{
 				Algo: "sha256",
 				Hash: "abc123",
 			},
@@ -116,11 +116,15 @@ func TestAppendAttachmentEvent(t *testing.T) {
 	if parsedEvent.Att.Kind != "note" {
 		t.Errorf("Event Kind = %v, want 'note'", parsedEvent.Att.Kind)
 	}
-	if parsedEvent.Att.Blob.Algo != "sha256" {
-		t.Errorf("Event Blob.Algo = %v, want 'sha256'", parsedEvent.Att.Blob.Algo)
-	}
-	if parsedEvent.Att.Blob.Hash != "abc123" {
-		t.Errorf("Event Blob.Hash = %v, want 'abc123'", parsedEvent.Att.Blob.Hash)
+	if parsedEvent.Att.Blob == nil {
+		t.Errorf("Event Blob is nil, want non-nil")
+	} else {
+		if parsedEvent.Att.Blob.Algo != "sha256" {
+			t.Errorf("Event Blob.Algo = %v, want 'sha256'", parsedEvent.Att.Blob.Algo)
+		}
+		if parsedEvent.Att.Blob.Hash != "abc123" {
+			t.Errorf("Event Blob.Hash = %v, want 'abc123'", parsedEvent.Att.Blob.Hash)
+		}
 	}
 	if parsedEvent.Att.Size != 42 {
 		t.Errorf("Event Size = %v, want 42", parsedEvent.Att.Size)

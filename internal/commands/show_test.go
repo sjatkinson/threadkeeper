@@ -428,3 +428,4 @@ func TestLoadAttachments_MalformedLines(t *testing.T) {
 		t.Error("loadAttachments() missing att2")
 	}
 }
+

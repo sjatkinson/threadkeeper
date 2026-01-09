@@ -213,13 +213,26 @@ func displayAttachmentsHistory(out io.Writer, events []AttachmentEvent) {
 		truncatedID := truncateID(event.Att.AttID)
 		op := event.Op
 		kind := event.Att.Kind
-		name := event.Att.Name
 
-		// Format size: show raw bytes for notes, "-" for others
+		var name string
 		var sizeStr string
 		if event.Att.Kind == "note" {
-			sizeStr = fmt.Sprintf("%d", event.Att.Size)
+			name = event.Att.Name
+			if event.Att.Size > 0 {
+				sizeStr = fmt.Sprintf("%d", event.Att.Size)
+			} else {
+				sizeStr = "-"
+			}
+		} else if event.Att.Kind == "link" {
+			// For links: show [label] url or just url
+			if event.Att.Label != "" {
+				name = fmt.Sprintf("[%s] %s", event.Att.Label, event.Att.URL)
+			} else {
+				name = event.Att.URL
+			}
+			sizeStr = "-"
 		} else {
+			name = event.Att.Name
 			sizeStr = "-"
 		}
 
@@ -287,19 +300,34 @@ func displayContextual(out io.Writer, t *task.Task, attachments []AttachmentEven
 			kind := att.Att.Kind
 			name := att.Att.Name
 
-			// Format size: show raw bytes for notes, "-" for others
-			var sizeStr string
+			var displayText string
 			if att.Att.Kind == "note" {
-				sizeStr = fmt.Sprintf("%d B", att.Att.Size)
+				// For notes: show name with blob hash prefix
+				var hashPrefix string
+				if att.Att.Blob != nil && len(att.Att.Blob.Hash) >= 8 {
+					hashPrefix = att.Att.Blob.Hash[:8]
+				}
+				if hashPrefix != "" {
+					displayText = fmt.Sprintf("%s (blob %s)", name, hashPrefix)
+				} else {
+					displayText = name
+				}
+			} else if att.Att.Kind == "link" {
+				// For links: show [label] url or just url
+				if att.Att.Label != "" {
+					displayText = fmt.Sprintf("[%s] %s", att.Att.Label, att.Att.URL)
+				} else {
+					displayText = att.Att.URL
+				}
 			} else {
-				sizeStr = "-"
+				displayText = name
 			}
 
 			created := formatAttachmentDate(att.TS)
 
-			// Format: "N. name (kind, size, date)  open: tk open <id> --att N"
-			_, _ = fmt.Fprintf(out, "%d. %s (%s, %s, %s)  open: %s open %s --att %d\n",
-				i+1, name, kind, sizeStr, created, appName, t.ID, i+1)
+			// Format: "N. displayText (kind, date)  open: tk open <id> --att N"
+			_, _ = fmt.Fprintf(out, "%d. %s (%s, %s)  open: %s open %s --att %d\n",
+				i+1, displayText, kind, created, appName, t.ID, i+1)
 		}
 	}
 }
