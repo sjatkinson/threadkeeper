@@ -20,7 +20,6 @@ func RunList(args []string, ctx CommandContext) int {
 	}
 
 	var (
-		path    string
 		all     bool
 		project string
 		status  string
@@ -28,7 +27,6 @@ func RunList(args []string, ctx CommandContext) int {
 		tag     string
 	)
 
-	fs.StringVar(&path, "path", "", "custom workspace path")
 	fs.BoolVar(&all, "all", false, "show all tasks")
 	fs.BoolVar(&all, "a", false, "show all tasks (shorthand)")
 	fs.StringVar(&project, "project", "", "filter by project")
@@ -51,7 +49,7 @@ func RunList(args []string, ctx CommandContext) int {
 	}
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -113,7 +111,6 @@ func listUsage(app string) string {
   %s list [flags]
 
 Flags:
-  --path <dir>                custom workspace path
   -a, --all                   show all tasks (default: only open)
   -p, --project <name>        filter by project
   --status <open|done|archived> filter by status

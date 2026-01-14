@@ -180,6 +180,7 @@ func Run(argv []string, cfg Config) int {
 	var (
 		flgHelp    bool
 		flgVersion bool
+		flgPath    string
 	)
 	global.BoolVar(&flgHelp, "h", false, "show help")
 	global.BoolVar(&flgHelp, "help", false, "show help")
@@ -187,6 +188,7 @@ func Run(argv []string, cfg Config) int {
 	global.BoolVar(&cfg.Verbose, "v", false, "verbose output")
 	global.BoolVar(&cfg.Verbose, "verbose", false, "verbose output")
 	global.BoolVar(&cfg.Debug, "debug", false, "debug output")
+	global.StringVar(&flgPath, "path", "", "custom workspace path")
 
 	global.Usage = func() { _, _ = fmt.Fprintln(cfg.Err, usage(cfg.AppName)) }
 
@@ -219,6 +221,7 @@ func Run(argv []string, cfg Config) int {
 					AppName: cfg.AppName,
 					Out:     cfg.Out,
 					Err:     cfg.Err,
+					Path:    flgPath,
 				})
 			}
 		}
@@ -273,6 +276,7 @@ func Run(argv []string, cfg Config) int {
 		AppName: cfg.AppName,
 		Out:     cfg.Out,
 		Err:     cfg.Err,
+		Path:    flgPath,
 	})
 }
 
@@ -314,6 +318,7 @@ Global flags:
       --version        print version and exit
   -v, --verbose        verbose output
       --debug          debug output
+      --path <dir>     custom workspace path
 
 Commands:
 %s
@@ -326,10 +331,9 @@ Run:
 // Usage functions extracted from commandUsage() switch
 func initUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s init [--path <dir>] [--force]
+  %s init [--force]
 
 Flags:
-  --path <dir>     custom workspace path
   --force          allow initialization even if tasks exist (future: may wipe)
 
 `, app)
@@ -340,7 +344,6 @@ func addUsage(app string) string {
   %s add <title> [flags]
 
 Flags:
-  --path <dir>           custom workspace path
   -d, --description <t>  description
   -p, --project <name>   project name
   --due <date>           due date (format depends on date_locale config)
@@ -354,7 +357,6 @@ func listUsage(app string) string {
   %s list [flags]
 
 Flags:
-  --path <dir>                custom workspace path
   -a, --all                   show all tasks (default: only open)
   -p, --project <name>        filter by project
   --status <open|done|archived> filter by status
@@ -366,14 +368,14 @@ Flags:
 
 func doneUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s done [--path <dir>] <id> [<id> ...]
+  %s done <id> [<id> ...]
 
 `, app)
 }
 
 func removeUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s remove [--path <dir>] --force <id> [<id> ...]
+  %s remove --force <id> [<id> ...]
 
 Flags:
   --force   actually delete (required)
@@ -383,10 +385,7 @@ Flags:
 
 func archiveUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s archive [--path <dir>] <id> [<id> ...]
-
-Flags:
-  --path <dir>   custom workspace path
+  %s archive <id> [<id> ...]
 
 `, app)
 }
@@ -402,24 +401,23 @@ Reopen one or more tasks, changing their status from inactive (archived or done)
 
 func reindexUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s reindex [--path <dir>]
+  %s reindex
 
 `, app)
 }
 
 func describeUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s describe [--path <dir>] <id>
+  %s describe <id>
 
 `, app)
 }
 
 func showUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s show [--path <dir>] [--full] <id>
+  %s show [--full] <id>
 
 Flags:
-  --path <dir>   custom workspace path
   --full         show full metadata and history
   --all          show full metadata (deprecated, use --full)
 
@@ -428,7 +426,7 @@ Flags:
 
 func updateUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s update [--path <dir>] <id> [<id> ...] [flags]
+  %s update <id> [<id> ...] [flags]
 
 Flags:
   --title <t>           set new title
@@ -442,43 +440,48 @@ Flags:
 
 func pathUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s path [--path <dir>] <thread-id>
+  %s path <thread-id>
 
 Prints the canonical filesystem path for the thread directory.
 Accepts either a durable thread ID or a short ID.
-
-Flags:
-  --path <dir>   custom workspace path
 
 `, app)
 }
 
 func attachUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s attach [--path <dir>] <thread-id>
+  %s attach note --id <thread-id>
+  %s attach link --id <thread-id> --url <url> [--label <label>]
 
-Attach an inline note to a thread. Opens your editor to capture note content.
+Attach context to a thread.
 
-The note is stored as a content-addressed blob and recorded in attachments.jsonl.
+Types:
+  note   Open editor, store content-addressed blob, record in attachments.jsonl.
+  link   Record URL (and optional label) in attachments.jsonl.
 
 Flags:
-  --path <dir>   custom workspace path
+  --id <id>       thread handle or canonical id
+  --url <url>     URL to attach [link only]
+  --label <text>  label for link (pr, slack, jira, doc, etc.) [link only]
 
 Environment variables:
-  TK_EDITOR      editor to use (defaults to $EDITOR, then vi)
-  EDITOR         editor to use (if TK_EDITOR not set)
+  TK_EDITOR       editor to use (defaults to $EDITOR, then vi) [note only]
+  EDITOR          editor to use (if TK_EDITOR not set) [note only]
 
-`, app)
+Examples:
+  %s attach note --id 1
+  %s attach link --id 1 --url https://example.com/pr/123 --label pr
+
+`, app, app, app, app)
 }
 
 func openUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s open [--path <dir>] [--att <index> | --att-id <id>] [--print-path] <thread-id>
+  %s open [--att <index> | --att-id <id>] [--print-path] <thread-id>
 
 Open an attachment from a thread.
 
 Flags:
-  --path <dir>      custom workspace path
   --att <index>     attachment index (1-based, from 'show' output)
   --att-id <id>     attachment ID (alternative to --att)
   --print-path      print blob path instead of opening

@@ -18,9 +18,6 @@ func RunArchive(args []string, ctx CommandContext) int {
 		_, _ = fmt.Fprintln(ctx.Err, archiveUsage(ctx.AppName))
 	}
 
-	var path string
-	fs.StringVar(&path, "path", "", "custom workspace path")
-
 	if err := fs.Parse(args); err != nil {
 		_, _ = fmt.Fprintln(ctx.Err)
 		_, _ = fmt.Fprintln(ctx.Err, archiveUsage(ctx.AppName))
@@ -34,7 +31,7 @@ func RunArchive(args []string, ctx CommandContext) int {
 	}
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -99,10 +96,7 @@ func RunArchive(args []string, ctx CommandContext) int {
 
 func archiveUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s archive [--path <dir>] <id> [<id> ...]
-
-Flags:
-  --path <dir>   custom workspace path
+  %s archive <id> [<id> ...]
 
 `, app)
 }

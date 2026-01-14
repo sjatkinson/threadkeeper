@@ -19,9 +19,6 @@ func RunDescribe(args []string, ctx CommandContext) int {
 		_, _ = fmt.Fprintln(ctx.Err, describeUsage(ctx.AppName))
 	}
 
-	var path string
-	fs.StringVar(&path, "path", "", "custom workspace path")
-
 	if err := fs.Parse(args); err != nil {
 		_, _ = fmt.Fprintln(ctx.Err)
 		_, _ = fmt.Fprintln(ctx.Err, describeUsage(ctx.AppName))
@@ -37,7 +34,7 @@ func RunDescribe(args []string, ctx CommandContext) int {
 	idStr := rest[0]
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -143,10 +140,7 @@ func RunDescribe(args []string, ctx CommandContext) int {
 
 func describeUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s describe [--path <dir>] <id>
-
-Flags:
-  --path <dir>   custom workspace path
+  %s describe <id>
 
 `, app)
 }

@@ -16,9 +16,6 @@ func RunPath(args []string, ctx CommandContext) int {
 		_, _ = fmt.Fprintln(ctx.Err, pathUsage(ctx.AppName))
 	}
 
-	var path string
-	fs.StringVar(&path, "path", "", "custom workspace path")
-
 	if err := fs.Parse(args); err != nil {
 		_, _ = fmt.Fprintln(ctx.Err)
 		_, _ = fmt.Fprintln(ctx.Err, pathUsage(ctx.AppName))
@@ -39,7 +36,7 @@ func RunPath(args []string, ctx CommandContext) int {
 	threadID := threadIDs[0]
 
 	// Get paths and verify threads directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -69,13 +66,10 @@ func RunPath(args []string, ctx CommandContext) int {
 
 func pathUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s path [--path <dir>] <thread-id>
+  %s path <thread-id>
 
 Prints the canonical filesystem path for the thread directory.
 Accepts either a durable thread ID or a short ID.
-
-Flags:
-  --path <dir>   custom workspace path
 
 `, app)
 }

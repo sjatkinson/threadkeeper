@@ -16,6 +16,7 @@ type CommandContext struct {
 	AppName string
 	Out     io.Writer
 	Err     io.Writer
+	Path    string
 }
 
 func RunInit(args []string, ctx CommandContext) int {
@@ -25,9 +26,7 @@ func RunInit(args []string, ctx CommandContext) int {
 		_, _ = fmt.Fprintln(ctx.Err, usage(ctx.AppName))
 	}
 
-	var path string
 	var force bool
-	fs.StringVar(&path, "path", "", "custom workspace path")
 	fs.BoolVar(&force, "force", false, "force initialization (wipes threads directory)")
 
 	if err := fs.Parse(args); err != nil {
@@ -40,7 +39,7 @@ func RunInit(args []string, ctx CommandContext) int {
 		return 2
 	}
 
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -93,10 +92,9 @@ func RunInit(args []string, ctx CommandContext) int {
 
 func usage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s init [--path <dir>] [--force]
+  %s init [--force]
 
 Flags:
-  --path <dir>     custom workspace path
   --force          allow initialization even if tasks exist (future: may wipe)
 
 `, app)

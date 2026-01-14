@@ -24,10 +24,8 @@ func RunShow(args []string, ctx CommandContext) int {
 		_, _ = fmt.Fprintln(ctx.Err, showUsage(ctx.AppName))
 	}
 
-	var path string
 	var full bool
 	var all bool // deprecated, use --full
-	fs.StringVar(&path, "path", "", "custom workspace path")
 	fs.BoolVar(&full, "full", false, "show full metadata and history")
 	fs.BoolVar(&all, "all", false, "show full metadata (deprecated, use --full)")
 
@@ -46,7 +44,7 @@ func RunShow(args []string, ctx CommandContext) int {
 	idStr := rest[0]
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -99,10 +97,9 @@ func RunShow(args []string, ctx CommandContext) int {
 
 func showUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s show [--path <dir>] [--full] <id>
+  %s show [--full] <id>
 
 Flags:
-  --path <dir>   custom workspace path
   --full         show full metadata and history
   --all          show full metadata (deprecated, use --full)
 

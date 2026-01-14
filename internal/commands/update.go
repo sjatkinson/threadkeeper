@@ -31,7 +31,6 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	}
 
 	var (
-		path       string
 		title      string
 		due        string
 		project    string
@@ -39,7 +38,6 @@ func RunUpdate(args []string, ctx CommandContext) int {
 		removeTags updateStringList
 	)
 
-	fs.StringVar(&path, "path", "", "custom workspace path")
 	fs.StringVar(&title, "title", "", "set new title")
 	fs.StringVar(&due, "due", "", "set due date (YYYY-MM-DD)")
 	fs.StringVar(&project, "project", "", "set project name")
@@ -101,7 +99,7 @@ func RunUpdate(args []string, ctx CommandContext) int {
 	}
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -263,10 +261,9 @@ func RunUpdate(args []string, ctx CommandContext) int {
 
 func updateUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s update [--path <dir>] [flags] <id> [<id> ...] [+tag] [-tag] ...
+  %s update [flags] <id> [<id> ...] [+tag] [-tag] ...
 
 Flags:
-  --path <dir>        custom workspace path
   --title <string>    set new title
   --due <date>        set due date (format depends on date_locale config)
   --project <name>    set project name

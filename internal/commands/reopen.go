@@ -33,7 +33,7 @@ func RunReopen(args []string, ctx CommandContext) int {
 	}
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths("")
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1

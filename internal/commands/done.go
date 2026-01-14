@@ -18,9 +18,6 @@ func RunDone(args []string, ctx CommandContext) int {
 		_, _ = fmt.Fprintln(ctx.Err, doneUsage(ctx.AppName))
 	}
 
-	var path string
-	fs.StringVar(&path, "path", "", "custom workspace path")
-
 	if err := fs.Parse(args); err != nil {
 		_, _ = fmt.Fprintln(ctx.Err)
 		_, _ = fmt.Fprintln(ctx.Err, doneUsage(ctx.AppName))
@@ -34,7 +31,7 @@ func RunDone(args []string, ctx CommandContext) int {
 	}
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -84,10 +81,7 @@ func RunDone(args []string, ctx CommandContext) int {
 
 func doneUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s done [--path <dir>] <id> [<id> ...]
-
-Flags:
-  --path <dir>   custom workspace path
+  %s done <id> [<id> ...]
 
 `, app)
 }

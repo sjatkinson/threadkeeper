@@ -17,9 +17,7 @@ func RunRemove(args []string, ctx CommandContext) int {
 		_, _ = fmt.Fprintln(ctx.Err, removeUsage(ctx.AppName))
 	}
 
-	var path string
 	var force bool
-	fs.StringVar(&path, "path", "", "custom workspace path")
 	fs.BoolVar(&force, "force", false, "actually delete (required)")
 
 	if err := fs.Parse(args); err != nil {
@@ -41,7 +39,7 @@ func RunRemove(args []string, ctx CommandContext) int {
 	}
 
 	// Get paths and verify threads directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -93,10 +91,9 @@ func RunRemove(args []string, ctx CommandContext) int {
 
 func removeUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s remove [--path <dir>] --force <id> [<id> ...]
+  %s remove --force <id> [<id> ...]
 
 Flags:
-  --path <dir>   custom workspace path
   --force        actually delete (required)
 
 `, app)

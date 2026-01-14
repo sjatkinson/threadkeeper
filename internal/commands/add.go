@@ -30,13 +30,11 @@ func RunAdd(args []string, ctx CommandContext) int {
 	}
 
 	var (
-		path    string
 		desc    string
 		project string
 		due     string
 		tags    stringList
 	)
-	fs.StringVar(&path, "path", "", "custom workspace path")
 	fs.StringVar(&desc, "description", "", "description")
 	fs.StringVar(&desc, "d", "", "description (shorthand)")
 	fs.StringVar(&project, "project", "", "project name")
@@ -62,7 +60,7 @@ func RunAdd(args []string, ctx CommandContext) int {
 	title := strings.Join(fs.Args(), " ")
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -149,7 +147,6 @@ func addUsage(app string) string {
   %s add <title> [flags]
 
 Flags:
-  --path <dir>           custom workspace path
   -d, --description <t>  description
   -p, --project <name>   project name
   --due <date>           due date (format depends on date_locale config)

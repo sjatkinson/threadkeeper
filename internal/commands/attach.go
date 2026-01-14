@@ -278,12 +278,10 @@ func RunAttach(args []string, ctx CommandContext) int {
 	}
 
 	var (
-		path  string
 		id    string
 		url   string
 		label string
 	)
-	fs.StringVar(&path, "path", "", "custom workspace path")
 	fs.StringVar(&id, "id", "", "thread handle or canonical id")
 	if attachType == "link" {
 		fs.StringVar(&url, "url", "", "URL to attach")
@@ -319,7 +317,7 @@ func RunAttach(args []string, ctx CommandContext) int {
 	}
 
 	if attachType == "note" {
-		return runAttachNote(id, path, ctx)
+		return runAttachNote(id, ctx.Path, ctx)
 	}
 
 	// Link attachment
@@ -329,7 +327,7 @@ func RunAttach(args []string, ctx CommandContext) int {
 		return 2
 	}
 
-	return runAttachLink(id, url, label, path, ctx)
+	return runAttachLink(id, url, label, ctx.Path, ctx)
 }
 
 func runAttachNote(threadIDStr, path string, ctx CommandContext) int {
@@ -513,8 +511,8 @@ func runAttachLink(threadIDStr, url, label, path string, ctx CommandContext) int
 
 func attachUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s attach [--path <dir>] note --id <thread-id>
-  %s attach [--path <dir>] link --id <thread-id> --url <url> [--label <label>]
+  %s attach note --id <thread-id>
+  %s attach link --id <thread-id> --url <url> [--label <label>]
 
 Attach context to a thread.
 
@@ -523,7 +521,6 @@ Types:
   link   Record URL (and optional label) in attachments.jsonl.
 
 Flags:
-  --path <dir>    custom workspace path
   --id <id>       thread handle or canonical id
   --url <url>     URL to attach [link only]
   --label <text>  label for link (pr, slack, jira, doc, etc.) [link only]

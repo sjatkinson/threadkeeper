@@ -81,13 +81,11 @@ func RunOpen(args []string, ctx CommandContext) int {
 	}
 
 	var (
-		path      string
 		attIndex  int
 		attID     string
 		printPath bool
 	)
 
-	fs.StringVar(&path, "path", "", "custom workspace path")
 	fs.IntVar(&attIndex, "att", 0, "attachment index (1-based)")
 	fs.StringVar(&attID, "att-id", "", "attachment ID (alternative to --att)")
 	fs.BoolVar(&printPath, "print-path", false, "print path instead of opening")
@@ -135,7 +133,7 @@ func RunOpen(args []string, ctx CommandContext) int {
 	}
 
 	// Get paths and verify threads directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -269,12 +267,11 @@ func RunOpen(args []string, ctx CommandContext) int {
 
 func openUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s open [--path <dir>] [--att <index> | --att-id <id>] [--print-path] <thread-id>
+  %s open [--att <index> | --att-id <id>] [--print-path] <thread-id>
 
 Open an attachment from a thread.
 
 Flags:
-  --path <dir>      custom workspace path
   --att <index>     attachment index (1-based, from 'show' output)
   --att-id <id>     attachment ID (alternative to --att)
   --print-path      print blob path instead of opening

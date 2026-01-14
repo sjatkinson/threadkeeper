@@ -17,9 +17,6 @@ func RunReindex(args []string, ctx CommandContext) int {
 		_, _ = fmt.Fprintln(ctx.Err, reindexUsage(ctx.AppName))
 	}
 
-	var path string
-	fs.StringVar(&path, "path", "", "custom workspace path")
-
 	if err := fs.Parse(args); err != nil {
 		_, _ = fmt.Fprintln(ctx.Err)
 		_, _ = fmt.Fprintln(ctx.Err, reindexUsage(ctx.AppName))
@@ -32,7 +29,7 @@ func RunReindex(args []string, ctx CommandContext) int {
 	}
 
 	// Get paths and verify tasks directory exists
-	paths, err := config.GetPaths(path)
+	paths, err := config.GetPaths(ctx.Path)
 	if err != nil {
 		_, _ = fmt.Fprintf(ctx.Err, "Error: %v\n", err)
 		return 1
@@ -99,10 +96,7 @@ func RunReindex(args []string, ctx CommandContext) int {
 
 func reindexUsage(app string) string {
 	return fmt.Sprintf(`Usage:
-  %s reindex [--path <dir>]
-
-Flags:
-  --path <dir>   custom workspace path
+  %s reindex
 
 `, app)
 }
