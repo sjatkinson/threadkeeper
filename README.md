@@ -1,6 +1,6 @@
 # ThreadKeeper
 
-ThreadKeeper is a **local-first task manager for people who think in threads, not tickets**.
+ThreadKeeper is a local task manager for people with lots of ongoing **threads** of work. 
 
 It is designed for individuals (and very small teams) who want a fast, durable, text-centric way to track work without turning their lives into a project management system.
 
@@ -32,7 +32,6 @@ ThreadKeeper is intentionally scoped:
 - Maybe usable by a very small team
 
 There are no sprints, story points, burndown charts, or workflow engines.  
-If you need those, you already know where to find them.
 
 ### Local-first and durable
 
@@ -57,25 +56,6 @@ ThreadKeeper prefers:
 - Text over forms
 - Your editor over custom UIs
 
-If something creates friction, it is probably wrong.
-
----
-
-## What ThreadKeeper Is (and Isn’t)
-
-**ThreadKeeper is:**
-- A CLI-first task manager
-- A place to attach notes, links, and context to tasks
-- A way to track ongoing work without micromanaging yourself
-
-**ThreadKeeper is not:**
-- A full project management system
-- A knowledge base or wiki
-- A replacement for dedicated note-taking tools
-
-Notes exist to support tasks — not the other way around.
-
----
 
 ## Basic Usage Model
 
@@ -121,8 +101,6 @@ Notes are meant to answer questions like:
 - What did I try already?
 - What’s blocking this?
 
-Not: *What is the entire history of this topic?*
-
 ---
 
 ## Data and Longevity
@@ -145,13 +123,6 @@ Design decisions are guided by:
 - Personal workflows
 - What holds up over time
 
-If something feels heavy, it will likely be simplified.
-
 ---
-
-## Name
-
-A *thread* is a line of execution.  
-A *keeper* is something that preserves.
 
 ThreadKeeper exists to keep hold of the threads that matter — long enough to finish them, or consciously let them go.
