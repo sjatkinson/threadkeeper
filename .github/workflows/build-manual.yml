@@ -31,9 +31,9 @@ jobs:
         run: |
           mkdir -p dist
           go build -trimpath -ldflags="-s -w" \
-            -o dist/threadripper_darwin_arm64 ./cmd/threadripper
+            -o dist/tk_darwin_arm64 ./cmd/tk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: threadripper_darwin_arm64
-          path: dist/threadripper_darwin_arm64
+          name: tk_darwin_arm64
+          path: dist/tk_darwin_arm64
