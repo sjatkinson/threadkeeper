@@ -1,60 +1,12 @@
 # ThreadKeeper
 
-ThreadKeeper is a local task manager for people with lots of ongoing **threads** of work. 
+ThreadKeeper is a command-line task tracker. Tasks, notes, and attachments are stored as plain files in a directory on disk. There is no server, no database, and no sync.
 
-It is designed for individuals (and very small teams) who want a fast, durable, text-centric way to track work without turning their lives into a project management system.
+A task has a subject, a body, a status, and zero or more tags. Notes can be attached to tasks as work progresses; each note is stored as a content-addressed blob. The data is meant to be readable with a shell, an editor, and `grep`.
 
-This is not Jira.  
-This is not a second brain.  
-This is a place to keep track of what you are doing — and why.
+ThreadKeeper is designed for one user. It does not track sprints, assignments, dependencies, or schedules. Tasks are expected to accumulate context, sit dormant, and sometimes be abandoned; the model assumes work is ongoing, not ticketed.
 
 ---
-
-## Philosophy
-
-ThreadKeeper is built around a few core ideas.
-
-### Tasks are threads of attention
-
-A task is not just a checkbox.  
-It is a thread: something you pick up, put down, return to, and occasionally abandon.
-
-ThreadKeeper assumes:
-- Tasks evolve over time
-- Notes and context matter
-- You often need to remember *where you left off*, not just *that something exists*
-
-### Human scale, not enterprise scale
-
-ThreadKeeper is intentionally scoped:
-- Single user by default
-- Possibly shared across a few machines
-- Maybe usable by a very small team
-
-There are no sprints, story points, burndown charts, or workflow engines.  
-
-### Local-first and durable
-
-Your data lives on your machine. It is:
-- Fast
-- Inspectable
-- Back-uppable
-- Under your control
-
-ThreadKeeper is designed to work well with:
-- Version control
-- Backups
-- Long-lived personal archives
-
-### Low ceremony, low friction
-
-Creating or updating a task should be easier than avoiding it.
-
-ThreadKeeper prefers:
-- Simple commands
-- Optional structure
-- Text over forms
-- Your editor over custom UIs
 
 
 ## Basic Usage Model
